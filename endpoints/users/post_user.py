@@ -2,7 +2,10 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from models.schemas import UserCreate, User, UserDB
+# Pydantic
+from models.schemas import User, UserCreate
+# SQLAlchemy
+from database.connection import User as UserDB
 from database.connection import get_db
 import hashlib
 

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.connection import create_tables, test_connection, migrate_database
-from endpoints import get_users, post_user, put_user, delete_user
+from endpoints import get_users_router, post_user_router, put_user_router, delete_user_router
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -20,10 +20,10 @@ app.add_middleware(
 )
 
 # Incluir los routers de los endpoints
-app.include_router(get_users.router)
-app.include_router(post_user.router)
-app.include_router(put_user.router)
-app.include_router(delete_user.router)
+app.include_router(get_users_router)
+app.include_router(post_user_router)
+app.include_router(put_user_router)
+app.include_router(delete_user_router)
 
 @app.on_event("startup")
 async def startup_event():
