@@ -2,7 +2,10 @@ from fastapi import APIRouter, HTTPException, status, Query, Depends
 from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from models.schemas import User, UserDB
+# Pydantic
+from models.schemas import User  
+# SQLAlchemy
+from database.connection import User as UserDB  
 from database.connection import get_db
 
 router = APIRouter(prefix="/users", tags=["users"])

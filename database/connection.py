@@ -1,211 +1,113 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, ForeignKey, text
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from datetime import datetime
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configuración de la base de datos
-DATABASE_URL = os.getenv('SQL_SERVER_CONNECTION_STRING')
-if not DATABASE_URL:
-    # String de conexión por defecto para SQL Server con SQLAlchemy
-    DATABASE_URL = (
-        "mssql+pyodbc://localhost/MiPrimerApiDB?"
-        "driver=ODBC+Driver+17+for+SQL+Server&"
-        "TrustServerCertificate=yes&"
-        "Encrypt=yes"
-    )
-
-# Crear el motor de SQLAlchemy
-engine = create_engine(
-    DATABASE_URL,
-    echo=False,  # Cambiar a True para ver las queries SQL en consola
-    pool_pre_ping=True,
-    pool_recycle=300
-)
-
-# Crear la sesión
+connection_string = os.getenv('SQL_SERVER_CONNECTION_STRING')
+engine = create_engine(connection_string, echo=True, pool_pre_ping=True, pool_recycle=300)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Base para los modelos
 Base = declarative_base()
 
-# Función para obtener la sesión de la base de datos
-def get_db() -> Session:
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False)
+    email = Column(String(100), unique=True, nullable=False)
+    full_name = Column(String(100))
+    password = Column(String(255), nullable=False)
+    rol = Column(String(20), default="cliente")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_deleted = Column(Boolean, default=False)
+
+    loans = relationship("Loan", back_populates="user")
+
+    def __repr__(self):
+        return f"<User(username={self.username}, email={self.email})>"
+
+
+class Material(Base):
+    __tablename__ = "materials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    author = Column(String(100), nullable=False)
+    type = Column(String(50), nullable=False)
+    is_deleted = Column(Boolean, default=False)
+    date_added = Column(DateTime, default=datetime.utcnow)
+
+    loans = relationship("Loan", back_populates="material")
+
+    def __repr__(self):
+        return f"<Material(title={self.title}, author={self.author}, type={self.type})>"
+
+
+class Loan(Base):
+    __tablename__ = "loans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    material_id = Column(Integer, ForeignKey("materials.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    loan_date = Column(DateTime, default=datetime.utcnow)
+    expected_return_date = Column(DateTime, nullable=False)
+    actual_return_date = Column(DateTime)
+    is_returned = Column(Boolean, default=False)
+
+    material = relationship("Material", back_populates="loans")
+    user = relationship("User", back_populates="loans")
+
+    def __repr__(self):
+        return f"<Loan(user_id={self.user_id}, material_id={self.material_id}, returned={self.is_returned})>"
+
+
+def create_tables():
+    Base.metadata.create_all(bind=engine)
+    print("✅ Tablas creadas correctamente.")
+
+
+def migrate_database():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    with SessionLocal() as db:
+        # Insertar usuarios de ejemplo
+        admin = User(username="admin", email="admin@ejemplo.com", full_name="Administrador", password="hashed_password", rol="admin")
+        user1 = User(username="usuario1", email="usuario1@ejemplo.com", full_name="Juan Pérez", password="hashed_password", rol="cliente")
+        db.add_all([admin, user1])
+
+        # Insertar materiales de ejemplo
+        m1 = Material(title="El Principito", author="Antoine de Saint-Exupéry", type="book")
+        m2 = Material(title="Don Quijote", author="Miguel de Cervantes", type="book")
+        db.add_all([m1, m2])
+
+        db.commit()
+
+    print("✅ Migración ejecutada correctamente con datos de ejemplo.")
+
+
+def test_connection():
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        print("✅ Conexión exitosa.")
+        return True
+    except Exception as e:
+        print(f"❌ Error de conexión: {e}")
+        return False
+
+
+if __name__ == "__main__":
+    print("🔄 Probando conexión a la base de datos...")
+    if test_connection():
+        migrate_database()
+
+def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-# Función para crear todas las tablas
-def create_tables():
-    try:
-        Base.metadata.create_all(bind=engine)
-        print("Tablas creadas exitosamente")
-    except Exception as e:
-        print(f"Error creando tablas: {e}")
-        raise
-
-# Función para migrar la base de datos
-def migrate_database():
-    """Migra la base de datos usando SQL directo"""
-    
-    try:
-        print("Iniciando migración de la base de datos...")
-        
-        # Scripts SQL para crear las tablas
-        create_users_table = """
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='users' AND xtype='U')
-        BEGIN
-            CREATE TABLE users (
-                id INT IDENTITY(1,1) PRIMARY KEY,
-                username NVARCHAR(50) UNIQUE NOT NULL,
-                email NVARCHAR(100) UNIQUE NOT NULL,
-                full_name NVARCHAR(100),
-                password NVARCHAR(255) NOT NULL,
-                rol NVARCHAR(20) DEFAULT 'cliente' CHECK (rol IN ('cliente', 'admin')),
-                created_at DATETIME2 DEFAULT GETDATE(),
-                is_deleted BIT DEFAULT 0
-            )
-            
-            -- Crear índices para mejor rendimiento
-            CREATE INDEX IX_users_username ON users(username)
-            CREATE INDEX IX_users_email ON users(email)
-            CREATE INDEX IX_users_rol ON users(rol)
-            CREATE INDEX IX_users_is_deleted ON users(is_deleted)
-            
-            PRINT 'Tabla users creada exitosamente'
-        END
-        ELSE
-        BEGIN
-            PRINT 'Tabla users ya existe'
-        END
-        """
-        
-        create_materials_table = """
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='materials' AND xtype='U')
-        BEGIN
-            CREATE TABLE materials (
-                id INT IDENTITY(1,1) PRIMARY KEY,
-                title NVARCHAR(200) NOT NULL,
-                author NVARCHAR(100) NOT NULL,
-                type NVARCHAR(50) NOT NULL,
-                is_deleted BIT DEFAULT 0,
-                date_added DATETIME2 DEFAULT GETDATE()
-            )
-            
-            CREATE INDEX IX_materials_type ON materials(type)
-            CREATE INDEX IX_materials_author ON materials(author)
-            CREATE INDEX IX_materials_date_added ON materials(date_added)
-            CREATE INDEX IX_materials_is_deleted ON materials(is_deleted)
-            
-            PRINT 'Tabla materials creada exitosamente'
-        END
-        ELSE
-        BEGIN
-            PRINT 'Tabla materials ya existe'
-        END
-        """
-        
-        create_loans_table = """
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='loans' AND xtype='U')
-        BEGIN
-            CREATE TABLE loans (
-                id INT IDENTITY(1,1) PRIMARY KEY,
-                material_id INT NOT NULL,
-                user_id INT NOT NULL,
-                loan_date DATETIME2 DEFAULT GETDATE(),
-                expected_return_date DATETIME2 NOT NULL,
-                actual_return_date DATETIME2,
-                is_returned BIT DEFAULT 0,
-                FOREIGN KEY (material_id) REFERENCES materials(id),
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            )
-            
-            CREATE INDEX IX_loans_material_id ON loans(material_id)
-            CREATE INDEX IX_loans_user_id ON loans(user_id)
-            CREATE INDEX IX_loans_loan_date ON loans(loan_date)
-            CREATE INDEX IX_loans_expected_return_date ON loans(expected_return_date)
-            CREATE INDEX IX_loans_actual_return_date ON loans(actual_return_date)
-            CREATE INDEX IX_loans_is_returned ON loans(is_returned)
-            
-            PRINT 'Tabla loans creada exitosamente'
-        END
-        ELSE
-        BEGIN
-            PRINT 'Tabla loans ya existe'
-        END
-        """
-        
-        # Scripts para insertar datos de ejemplo
-        insert_sample_users = """
-        IF NOT EXISTS (SELECT * FROM users WHERE username = 'admin')
-        BEGIN
-            INSERT INTO users (username, email, full_name, password, rol, is_deleted)
-            VALUES 
-                ('admin', 'admin@ejemplo.com', 'Administrador del Sistema', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'admin', 0),
-                ('usuario1', 'usuario1@ejemplo.com', 'Juan Pérez', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'cliente', 0),
-                ('maria_garcia', 'maria@ejemplo.com', 'María García', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'cliente', 0),
-                ('bibliotecario', 'biblio@ejemplo.com', 'Carlos López', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'admin', 0)
-            
-            PRINT 'Usuarios de ejemplo insertados'
-        END
-        ELSE
-        BEGIN
-            PRINT 'Usuarios de ejemplo ya existen'
-        END
-        """
-        
-        insert_sample_materials = """
-        IF NOT EXISTS (SELECT * FROM materials WHERE title = 'El Principito')
-        BEGIN
-            INSERT INTO materials (title, author, type, is_deleted, date_added)
-            VALUES 
-                ('El Principito', 'Antoine de Saint-Exupéry', 'book', 0, '2024-01-15T10:30:00'),
-                ('Don Quijote', 'Miguel de Cervantes', 'book', 0, '2024-01-16T14:20:00'),
-                ('National Geographic', 'Varios Autores', 'magazine', 0, '2024-01-17T09:15:00'),
-                ('El País', 'Varios Autores', 'newspaper', 0, '2024-01-18T07:00:00')
-            
-            PRINT 'Materiales de ejemplo insertados'
-        END
-        ELSE
-        BEGIN
-            PRINT 'Materiales de ejemplo ya existen'
-        END
-        """
-        
-        # Ejecutar scripts usando SQLAlchemy
-        with engine.connect() as connection:
-            # Crear tablas
-            connection.execute(text(create_users_table))
-            connection.execute(text(create_materials_table))
-            connection.execute(text(create_loans_table))
-            
-            # Insertar datos de ejemplo
-            connection.execute(text(insert_sample_users))
-            connection.execute(text(insert_sample_materials))
-            
-            # Commit de los cambios
-            connection.commit()
-        
-        print("Migración completada exitosamente!")
-        
-    except Exception as e:
-        print(f"Error durante la migración: {e}")
-        raise
-
-# Función para verificar la conexión
-def test_connection():
-    try:
-        with engine.connect() as connection:
-            # Usar text() para convertir la query a un objeto ejecutable
-            result = connection.execute(text("SELECT 1"))
-            print("Conexión a la base de datos exitosa")
-            return True
-    except Exception as e:
-        print(f"Error conectando a la base de datos: {e}")
-        return False
