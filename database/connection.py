@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, ForeignKey, text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Enum, ForeignKey, text
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+from common import MaterialType
 
 load_dotenv()
 
@@ -36,7 +37,7 @@ class Material(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=False)
     author = Column(String(100), nullable=False)
-    type = Column(String(50), nullable=False)
+    type = Column(Enum(MaterialType, name="material_type_enum"), nullable=False)
     is_deleted = Column(Boolean, default=False)
     date_added = Column(DateTime, default=datetime.utcnow)
 
@@ -44,7 +45,6 @@ class Material(Base):
 
     def __repr__(self):
         return f"<Material(title={self.title}, author={self.author}, type={self.type})>"
-
 
 class Loan(Base):
     __tablename__ = "loans"
@@ -70,23 +70,41 @@ def create_tables():
 
 
 def migrate_database():
-    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
     with SessionLocal() as db:
-        # Insertar usuarios de ejemplo
-        admin = User(username="admin", email="admin@ejemplo.com", full_name="Administrador", password="hashed_password", rol="admin")
-        user1 = User(username="usuario1", email="usuario1@ejemplo.com", full_name="Juan Pérez", password="hashed_password", rol="cliente")
-        db.add_all([admin, user1])
+        if db.query(User).count() == 0:
+            admin = User(
+                username="admin",
+                email="admin@ejemplo.com",
+                full_name="Administrador",
+                password="hashed_password",
+                rol="admin"
+            )
+            user1 = User(
+                username="usuario1",
+                email="usuario1@ejemplo.com",
+                full_name="Juan Pérez",
+                password="hashed_password",
+                rol="cliente"
+            )
+            db.add_all([admin, user1])
+            print("👤 Usuarios de ejemplo insertados.")
+        else:
+            print("⚠️ Ya existen usuarios, no se insertaron de nuevo.")
 
-        # Insertar materiales de ejemplo
-        m1 = Material(title="El Principito", author="Antoine de Saint-Exupéry", type="book")
-        m2 = Material(title="Don Quijote", author="Miguel de Cervantes", type="book")
-        db.add_all([m1, m2])
+        if db.query(Material).count() == 0:
+            m1 = Material(title="El Principito", author="Antoine de Saint-Exupéry", type="book")
+            m2 = Material(title="Don Quijote", author="Miguel de Cervantes", type="book")
+            db.add_all([m1, m2])
+            print("📚 Materiales de ejemplo insertados.")
+        else:
+            print("⚠️ Ya existen materiales, no se insertaron de nuevo.")
 
         db.commit()
 
-    print("✅ Migración ejecutada correctamente con datos de ejemplo.")
+    print("✅ Migración ejecutada correctamente.")
+
 
 
 def test_connection():
