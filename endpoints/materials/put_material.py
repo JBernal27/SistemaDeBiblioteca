@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from models.schemas import Material, MaterialUpdate
+from common import MaterialType
 from sqlalchemy.orm import Session
 from database.connection import Material as MaterialDB
 from database.connection import get_db
@@ -18,8 +19,12 @@ async def update_material(material_id: int, updated_data: MaterialUpdate, db: Se
             )
 
         update_data = updated_data.dict(exclude_unset=True)
+
         for key, value in update_data.items():
-            setattr(material, key, value)
+            if key == "type" and isinstance(value, MaterialType):
+                setattr(material, key, value.value)
+            else:
+                setattr(material, key, value)
 
         db.commit()
         db.refresh(material)

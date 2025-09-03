@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from models.schemas import Material, MaterialCreate
+from common import MaterialType
 from sqlalchemy.orm import Session
 from database.connection import Material as MaterialDB
 from database.connection import get_db
@@ -17,6 +18,12 @@ async def create_material(
     Crea un nuevo material
     """
     try:
+        if material.type not in MaterialType.__members__.values():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Tipo inválido. Debe ser uno de: {[t.value for t in MaterialType]}"
+            )
+
         stmt = select(MaterialDB).where(MaterialDB.title == material.title)
         result = db.execute(stmt)
         if result.scalar_one_or_none():
@@ -28,7 +35,8 @@ async def create_material(
         db_material = MaterialDB(
             title=material.title,
             author=material.author,
-            type=material.type)
+            type=material.type.value
+        )
 
         db.add(db_material)
         db.commit()
@@ -48,7 +56,7 @@ async def create_material(
     except HTTPException:
         db.rollback()
         raise
-    except IntegrityError as e:
+    except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -59,4 +67,4 @@ async def create_material(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error interno del servidor: {str(e)}"
-        )    
+        )
