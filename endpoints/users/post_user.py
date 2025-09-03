@@ -60,7 +60,7 @@ async def create_user(
             email=db_user.email,
             full_name=db_user.full_name,
             created_at=db_user.created_at,
-            is_active=db_user.is_active
+            is_deleted=db_user.is_deleted
         )
         
         return created_user

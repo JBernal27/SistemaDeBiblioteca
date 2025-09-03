@@ -20,7 +20,7 @@ async def delete_user(
     """
     try:
         # Verificar si el usuario existe
-        stmt = select(UserDB).where(UserDB.id == user_id, UserDB.is_active == True)
+        stmt = select(UserDB).where(UserDB.id == user_id, UserDB.is_deleted == True)
         result = db.execute(stmt)
         user_db = result.scalar_one_or_none()
         
@@ -31,7 +31,7 @@ async def delete_user(
             )
         
         # Soft delete - marcar como inactivo
-        user_db.is_active = False
+        user_db.is_deleted = False
         db.commit()
         
         return UserResponse(

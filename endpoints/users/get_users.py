@@ -21,7 +21,7 @@ async def get_users(
     """
     try:
         # Query usando SQLAlchemy CON ORDER BY (requerido por SQL Server)
-        stmt = select(UserDB).where(UserDB.is_active == True).order_by(UserDB.id).offset(skip).limit(limit)
+        stmt = select(UserDB).where(UserDB.is_deleted == True).order_by(UserDB.id).offset(skip).limit(limit)
         result = db.execute(stmt)
         users_db = result.scalars().all()
         
@@ -34,7 +34,7 @@ async def get_users(
                 email=user_db.email,
                 full_name=user_db.full_name,
                 created_at=user_db.created_at,
-                is_active=user_db.is_active
+                is_deleted=user_db.is_deleted
             )
             users.append(user)
         
@@ -56,7 +56,7 @@ async def get_user(
     """
     try:
         # Query usando SQLAlchemy
-        stmt = select(UserDB).where(UserDB.id == user_id, UserDB.is_active == True)
+        stmt = select(UserDB).where(UserDB.id == user_id, UserDB.is_deleted == True)
         result = db.execute(stmt)
         user_db = result.scalar_one_or_none()
         
@@ -73,7 +73,7 @@ async def get_user(
             email=user_db.email,
             full_name=user_db.full_name,
             created_at=user_db.created_at,
-            is_active=user_db.is_active
+            is_deleted=user_db.is_deleted
         )
         
         return user
