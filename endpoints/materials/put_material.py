@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from models.schemas import Material, MaterialCreate
+from models.schemas import Material, MaterialUpdate
 from sqlalchemy.orm import Session
 from database.connection import Material as MaterialDB
 from database.connection import get_db
@@ -8,21 +8,18 @@ from sqlalchemy.exc import IntegrityError
 router = APIRouter(prefix="/materials", tags=["materials"])
 
 @router.put("/{material_id}", response_model=Material)
-async def update_material(material_id: int, updated_data: MaterialCreate, db: Session = Depends(get_db)):
-    """
-    Actualiza un material existente
-    """
+async def update_material(material_id: int, updated_data: MaterialUpdate, db: Session = Depends(get_db)):
     try:
-        material = db.get(MaterialDB, material_id)
+        material = db.get(MaterialDB, material_id) 
         if not material or material.is_deleted:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Material no encontrado"
             )
 
-        material.title = updated_data.title
-        material.author = updated_data.author
-        material.type = updated_data.type
+        update_data = updated_data.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(material, key, value)
 
         db.commit()
         db.refresh(material)
