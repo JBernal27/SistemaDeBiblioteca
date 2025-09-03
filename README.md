@@ -133,13 +133,13 @@ CREATE DATABASE SistemaDeBiblioteca;
 
 ### Opción 1: Ejecución Directa (Recomendado)
 ```bash
-# Desde la carpeta MiApiSQLServer
+# Desde la carpeta SistemaDeBiblioteca
 python main.py
 ```
 
 ### Opción 2: Con Uvicorn
 ```bash
-# Desde la carpeta MiApiSQLServer
+# Desde la carpeta SistemaDeBiblioteca
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
