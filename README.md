@@ -249,6 +249,7 @@ CREATE TABLE loans (
 |--------|----------|-------------|----------------|
 | `GET` | `/materials` | Obtener lista de materiales disponibles | Cliente/Admin |
 | `GET` | `/materials/{id}` | Obtener material específico | Cliente/Admin |
+| `GET` | `/materials/search?autor=nombreAutor` | Buscar materiales por nombre de autor | Cliente/Admin |
 | `POST` | `/materials` | Crear nuevo material | Admin |
 | `PUT` | `/materials/{id}` | Actualizar material existente | Admin |
 | `DELETE` | `/materials/{id}` | Eliminar material (soft delete) | Admin |
@@ -258,12 +259,12 @@ CREATE TABLE loans (
 | Método | Endpoint | Descripción | Rol Requerido |
 |--------|----------|-------------|----------------|
 | `GET` | `/loans` | Obtener todos los préstamos | Admin |
+| `PUT` | `/loans/{id}/return` | Registar devolucion | Admin |
+| `POST` | `/loans` | Crear nuevo préstamo | Admin |
 | `GET` | `/loans/my` | Obtener préstamos del usuario actual | Cliente |
 | `GET` | `/loans/{id}` | Obtener préstamo específico | Admin |
 | `GET` | `/loans/user/{id}` | Obtener préstamos de usuario específico | Admin |
-| `POST` | `/loans` | Crear nuevo préstamo | Admin |
 | `PUT` | `/loans/{id}` | Actualizar préstamo existente | Admin |
-| `POST` | `/loans` | Crear préstamo | Admin |
 
 ### Endpoints del Sistema
 
