@@ -27,22 +27,27 @@ La API te permite hacer las operaciones típicas de una biblioteca:
 ## Arquitectura del Proyecto
 
 ```
-SISTEMADEBIBLIOTECA/
+SistemaDeBiblioteca/
+├── common/
+│   └── enums/                 # Enumeraciones compartidas (roles, estados, etc.)
 ├── database/
 │   └── connection.py          # Configuración de SQLAlchemy, conexión y migración
 ├── endpoints/
 │   ├── loans/                 # Endpoints para préstamos
 │   ├── materials/             # Endpoints para materiales
-│   └── users/                 # Endpoints para usuarios
+│   ├── users/                 # Endpoints para usuarios
+│   └── __init__.py            # Inicialización del módulo de endpoints
 ├── models/
 │   └── schemas.py             # Modelos Pydantic y SQLAlchemy
-├── scripts/
+├── scripts/                   # Scripts utilitarios
 │   └── migrate_database.py    # Script de migración de base de datos
+├── venv/                      # Entorno virtual de Python
+├── .env                       # Variables de entorno (credenciales, configuración)
 ├── .gitignore                 # Archivos ignorados por Git
-├── config.py                  # Configuración de la aplicación
-├── main.py                    # Aplicación principal FastAPI
-├── README.md                  # Este archivo
-└── requirements.txt            # Dependencias del proyecto
+├── config.py                  # Configuración general de la aplicación
+├── main.py                    # Punto de entrada de la aplicación FastAPI
+├── README.md                  # Documentación del proyecto
+└── requirements.txt           # Dependencias del proyecto
 ```
 
 ### Descripción de la Estructura:
@@ -133,13 +138,13 @@ CREATE DATABASE SistemaDeBiblioteca;
 
 ### Opción 1: Ejecución Directa (Recomendado)
 ```bash
-# Desde la carpeta MiApiSQLServer
+# Desde la carpeta SistemaDeBiblioteca
 python main.py
 ```
 
 ### Opción 2: Con Uvicorn
 ```bash
-# Desde la carpeta MiApiSQLServer
+# Desde la carpeta SistemaDeBiblioteca
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -213,8 +218,6 @@ CREATE TABLE loans (
 #### Materiales
 - **El Principito** - Antoine de Saint-Exupéry (Libro)
 - **Don Quijote** - Miguel de Cervantes (Libro)
-- **National Geographic** - Varios Autores (Revista)
-- **El País** - Varios Autores (Periódico)
 ### Sistema de Roles
 
 #### Rol: **Admin**
@@ -222,28 +225,11 @@ CREATE TABLE loans (
 - Puede realizar préstamos de materiales
 - Puede gestionar usuarios, materiales y préstamos
 - Puede crear, editar y eliminar cualquier registro
-- Acceso a reportes y estadísticas del sistema
 
 #### Rol: **Cliente**
 - Puede ver materiales disponibles
 - Puede ver su historial de préstamos
 - Control de fechas: Conocimiento de fechas de entrega esperadas
-
-### Logs de Migración
-
-Al iniciar la API verás:
-```
-INFO:     Started server process [XXXXX]
-INFO:     Waiting for application startup.
-Conexión a la base de datos exitosa
-Tablas creadas exitosamente
-Iniciando migración de la base de datos...
-Migración completada exitosamente!
-API iniciada correctamente
-Base de datos conectada, tablas creadas y migración completada
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-```
 
 ## Endpoints Disponibles
 
@@ -256,7 +242,6 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 | `POST` | `/users` | Crear nuevo usuario | Admin |
 | `PUT` | `/users/{id}` | Actualizar usuario existente | Admin |
 | `DELETE` | `/users/{id}` | Eliminar usuario (soft delete) | Admin |
-| `DELETE` | `/users/{id}/hard` | Eliminar usuario permanentemente | Admin |
 
 ### Materiales
 
@@ -264,6 +249,7 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 |--------|----------|-------------|----------------|
 | `GET` | `/materials` | Obtener lista de materiales disponibles | Cliente/Admin |
 | `GET` | `/materials/{id}` | Obtener material específico | Cliente/Admin |
+| `GET` | `/materials/search?autor=nombreAutor` | Buscar materiales por nombre de autor | Cliente/Admin |
 | `POST` | `/materials` | Crear nuevo material | Admin |
 | `PUT` | `/materials/{id}` | Actualizar material existente | Admin |
 | `DELETE` | `/materials/{id}` | Eliminar material (soft delete) | Admin |
@@ -273,18 +259,17 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 | Método | Endpoint | Descripción | Rol Requerido |
 |--------|----------|-------------|----------------|
 | `GET` | `/loans` | Obtener todos los préstamos | Admin |
+| `PUT` | `/loans/{id}/return` | Registar devolucion | Admin |
+| `POST` | `/loans` | Crear nuevo préstamo | Admin |
 | `GET` | `/loans/my` | Obtener préstamos del usuario actual | Cliente |
 | `GET` | `/loans/{id}` | Obtener préstamo específico | Admin |
-| `POST` | `/loans` | Crear nuevo préstamo | Admin |
+| `GET` | `/loans/user/{id}` | Obtener préstamos de usuario específico | Admin |
 | `PUT` | `/loans/{id}` | Actualizar préstamo existente | Admin |
-| `POST` | `/loans/request` | Solicitar préstamo | Cliente |
 
 ### Endpoints del Sistema
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| `GET` | `/` | Información de la API |
-| `GET` | `/health` | Estado de salud de la API |
 | `GET` | `/docs` | Documentación Swagger UI |
 
 ## Ejemplos de Uso
@@ -484,20 +469,6 @@ RELOAD=false
 uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info
 ```
 
-### Con Docker (opcional)
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
 ## Recursos Adicionales
 
 - [Documentación de FastAPI](https://fastapi.tiangolo.com/)
@@ -505,14 +476,6 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 - [Documentación de SQL Server](https://docs.microsoft.com/en-us/sql/)
 - [Guía de ODBC Driver](https://docs.microsoft.com/en-us/sql/connect/odbc/)
 - [FastAPI Lifespan Events](https://fastapi.tiangolo.com/advanced/events/)
-
-## Contribuciones
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
 
 ## Autores del Proyecto
 
