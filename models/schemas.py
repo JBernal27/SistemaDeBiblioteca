@@ -80,3 +80,27 @@ class MaterialResponse(BaseModel):
     error: Optional[str] = None
 
     
+# -----------------------------
+# Load Model and DTOs
+# -----------------------------
+
+class LoanBase(BaseModel):
+    material_id: int
+    user_id: int
+    expected_return_date: datetime
+
+class LoanCreate(LoanBase):
+    pass
+
+class LoanUpdate(BaseModel):
+    expected_return_date: Optional[datetime] = None
+    actual_return_date: Optional[datetime] = None
+    is_returned: Optional[bool] = None
+class LoanResponse(LoanBase):
+    id: int
+    loan_date: datetime
+    actual_return_date: Optional[datetime]
+    is_returned: bool
+
+    class Config:
+        orm_mode = True
