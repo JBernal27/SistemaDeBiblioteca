@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import datetime
-from common import MaterialType 
+from common import MaterialType, RolEnum
 
 # -----------------------------
 # Pydantic models para la API
@@ -11,34 +11,34 @@ from common import MaterialType
 # -----------------------------
 class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, description="Nombre de usuario único")
-    email: str = Field(..., description="Email del usuario")
+    email: EmailStr = Field(..., description="Email del usuario")
     full_name: Optional[str] = Field(None, max_length=100, description="Nombre completo")
 
-
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, description="Contraseña del usuario")
-
+    password: str = Field(..., min_length=6, max_length=255, description="Contraseña del usuario")
+    rol: RolEnum = Field(default=RolEnum.cliente, description="Rol del usuario")
 
 class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=50)
-    email: Optional[str] = Field(None)
+    email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(None, max_length=100)
     password: Optional[str] = Field(None, min_length=6)
-
+    rol: Optional[RolEnum] = None
 
 class User(UserBase):
     id: int
+    rol: RolEnum
     created_at: datetime
-    is_deleted: bool = True
+    is_deleted: bool = Field(default=False)
 
     class Config:
-        from_attributes = True
-
+        orm_mode = True
 
 class UserResponse(BaseModel):
     message: str
     user: Optional[User] = None
     error: Optional[str] = None
+
 
 
 # -----------------------------
