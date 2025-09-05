@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.connection import create_tables, test_connection, migrate_database
-from endpoints import get_users_router, post_user_router, put_user_router, delete_user_router, get_materials_router, post_material_router, put_material_router, delete_material_router
+from endpoints import get_users_router, post_user_router, put_user_router, delete_user_router, get_materials_router, post_material_router, put_material_router, delete_material_router,get_loan_router, post_loan_router, put_loan_router
 
 # Crear la aplicación FastAPI
 app = FastAPI(
@@ -28,6 +28,9 @@ app.include_router(get_materials_router)
 app.include_router(post_material_router)
 app.include_router(put_material_router)
 app.include_router(delete_material_router)
+app.include_router(get_loan_router)
+app.include_router(post_loan_router)
+app.include_router(put_loan_router)
 
 @app.on_event("startup")
 async def startup_event():
