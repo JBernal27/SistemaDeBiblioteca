@@ -29,7 +29,6 @@ async def create_user(
         hashed_password = hashlib.sha256(user.password.encode()).hexdigest()
 
         db_user = UserDB(
-            username=user.username,
             email=user.email,
             full_name=user.full_name,
             password=hashed_password,

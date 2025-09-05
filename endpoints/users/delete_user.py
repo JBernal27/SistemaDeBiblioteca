@@ -27,7 +27,7 @@ async def delete_user(
         db.commit()
 
         return UserResponse(
-            message=f"Usuario '{user_db.username}' eliminado exitosamente",
+            message=f"Usuario '{user_db.full_name}' eliminado exitosamente",
             user=user_db
         )
 

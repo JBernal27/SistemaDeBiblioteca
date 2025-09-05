@@ -10,7 +10,6 @@ from common import MaterialType, RolEnum
 # User Model and DTOs
 # -----------------------------
 class UserBase(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="Nombre de usuario único")
     email: EmailStr = Field(..., description="Email del usuario")
     full_name: Optional[str] = Field(None, max_length=100, description="Nombre completo")
 
@@ -19,7 +18,6 @@ class UserCreate(UserBase):
     rol: RolEnum = Field(default=RolEnum.cliente, description="Rol del usuario")
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(None, max_length=100)
     password: Optional[str] = Field(None, min_length=6)

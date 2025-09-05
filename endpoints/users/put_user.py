@@ -27,14 +27,6 @@ async def update_user(
 
         update_data = user_update.dict(exclude_unset=True)
 
-        if "username" in update_data and update_data["username"] != user_db.username:
-            stmt = select(UserDB).where(UserDB.username == update_data["username"], UserDB.id != user_id)
-            if db.execute(stmt).scalar_one_or_none():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="El nombre de usuario ya existe"
-                )
-
         if "email" in update_data and update_data["email"] != user_db.email:
             stmt = select(UserDB).where(UserDB.email == update_data["email"], UserDB.id != user_id)
             if db.execute(stmt).scalar_one_or_none():

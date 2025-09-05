@@ -22,7 +22,6 @@ async def get_users(
         users = [
             User(
                 id=u.id,
-                username=u.username,
                 email=u.email,
                 full_name=u.full_name,
                 rol=u.rol,
@@ -58,7 +57,6 @@ async def get_user(
 
         return User(
             id=user_db.id,
-            username=user_db.username,
             email=user_db.email,
             full_name=user_db.full_name,
             rol=user_db.rol,
