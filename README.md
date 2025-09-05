@@ -170,7 +170,6 @@ Al iniciar la API, automáticamente se ejecuta:
 ```sql
 CREATE TABLE users (
     id INT IDENTITY(1,1) PRIMARY KEY,
-    username NVARCHAR(50) UNIQUE NOT NULL,
     email NVARCHAR(100) UNIQUE NOT NULL,
     full_name NVARCHAR(100),
     password NVARCHAR(255) NOT NULL,
@@ -279,7 +278,6 @@ CREATE TABLE loans (
 curl -X POST "http://localhost:8000/users" \
      -H "Content-Type: application/json" \
      -d '{
-       "username": "juan_perez",
        "email": "juan@ejemplo.com",
        "full_name": "Juan Pérez",
        "password": "contraseña123",
@@ -292,7 +290,6 @@ curl -X POST "http://localhost:8000/users" \
 curl -X POST "http://localhost:8000/users" \
      -H "Content-Type: application/json" \
      -d '{
-       "username": "bibliotecario",
        "email": "biblio@biblioteca.com",
        "full_name": "Carlos López",
        "password": "admin123",

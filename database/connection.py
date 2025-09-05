@@ -17,7 +17,6 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     full_name = Column(String(100))
     password = Column(String(255), nullable=False)
@@ -28,7 +27,7 @@ class User(Base):
     loans = relationship("Loan", back_populates="user")
 
     def __repr__(self):
-        return f"<User(username={self.username}, email={self.email})>"
+        return f"<User( email={self.email})>"
 
 
 class Material(Base):
@@ -75,14 +74,12 @@ def migrate_database():
     with SessionLocal() as db:
         if db.query(User).count() == 0:
             admin = User(
-                username="admin",
                 email="admin@ejemplo.com",
                 full_name="Administrador",
                 password="hashed_password",
                 rol="admin"
             )
             user1 = User(
-                username="usuario1",
                 email="usuario1@ejemplo.com",
                 full_name="Juan Pérez",
                 password="hashed_password",
