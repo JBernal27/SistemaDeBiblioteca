@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends , Query
 from models.schemas import Material, MaterialCreate
 from sqlalchemy.orm import Session
 from database.connection import Material as MaterialDB
 from database.connection import get_db
-from sqlalchemy import select
+from sqlalchemy import select, func
+from typing import List
+
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
@@ -42,3 +44,16 @@ async def get_all_materials(db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error interno del servidor: {str(e)}"
         )
+    
+@router.get("/by-author/{author}", response_model=List[Material])
+def search_by_author(author: str, db: Session = Depends(get_db)):
+    """
+    Buscar materiales por autor
+    """
+    stmt = select(MaterialDB).where(MaterialDB.author.ilike(f"%{author}%"))
+    result = db.execute(stmt).scalars().all()
+
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se encontraron materiales con ese autor")
+
+    return result
