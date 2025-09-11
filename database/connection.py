@@ -13,7 +13,6 @@ engine = create_engine(connection_string, echo=True, pool_pre_ping=True, pool_re
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-
 class User(Base):
     __tablename__ = "users"
 
@@ -23,14 +22,12 @@ class User(Base):
     password = Column(String(255), nullable=False)
     rol = Column(String(20), default="cliente")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_by = Column(String(36), nullable=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    updated_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    updated_by = Column(String(36), nullable=True)
     is_deleted = Column(Boolean, default=False)
 
-    loans = relationship("Loan", back_populates="user")
-    creator = relationship("User", remote_side=[lambda: User.id], foreign_keys=[lambda: User.created_by], primaryjoin=lambda: User.id == User.created_by)
-    updater = relationship("User", remote_side=[lambda: User.id], foreign_keys=[lambda: User.updated_by], primaryjoin=lambda: User.id == User.updated_by)
+    loans = relationship("Loan", foreign_keys="Loan.user_id", back_populates="user")
 
     def __repr__(self):
         return f"<User( email={self.email})>"
@@ -45,13 +42,11 @@ class Material(Base):
     type = Column(Enum(MaterialType, name="material_type_enum"), nullable=False)
     is_deleted = Column(Boolean, default=False)
     date_added = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_by = Column(String(36), nullable=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    updated_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    updated_by = Column(String(36), nullable=True)
 
-    loans = relationship("Loan", back_populates="material")
-    creator = relationship("User", foreign_keys=[lambda: Material.created_by], primaryjoin=lambda: User.id == Material.created_by)
-    updater = relationship("User", foreign_keys=[lambda: Material.updated_by], primaryjoin=lambda: User.id == Material.updated_by)
+    loans = relationship("Loan", foreign_keys="Loan.material_id", back_populates="material")
 
     def __repr__(self):
         return f"<Material(title={self.title}, author={self.author}, type={self.type})>"
@@ -66,14 +61,12 @@ class Loan(Base):
     expected_return_date = Column(DateTime, nullable=False)
     actual_return_date = Column(DateTime)
     is_returned = Column(Boolean, default=False)
-    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_by = Column(String(36), nullable=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    updated_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    updated_by = Column(String(36), nullable=True)
 
     material = relationship("Material", back_populates="loans")
-    user = relationship("User", back_populates="loans")
-    creator = relationship("User", foreign_keys=[lambda: Loan.created_by], primaryjoin=lambda: User.id == Loan.created_by)
-    updater = relationship("User", foreign_keys=[lambda: Loan.updated_by], primaryjoin=lambda: User.id == Loan.updated_by)
+    user = relationship("User", foreign_keys="Loan.user_id", back_populates="loans")
 
     def __repr__(self):
         return f"<Loan(user_id={self.user_id}, material_id={self.material_id}, returned={self.is_returned})>"

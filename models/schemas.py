@@ -108,3 +108,12 @@ class Loan(LoanBase):
 
     class Config:
         orm_mode = True
+
+class LoanResponse(LoanBase):
+    id: int
+    loan_date: datetime
+    actual_return_date: Optional[datetime]
+    is_returned: bool
+
+    class Config:
+        orm_mode = True
