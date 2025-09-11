@@ -6,6 +6,7 @@ from database.connection import Material as MaterialDB
 from database.connection import get_db
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from uuid import UUID
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
@@ -39,6 +40,13 @@ async def create_material(
         )
 
         db.add(db_material)
+        db.flush()
+
+        if not db_material.created_by:
+            db_material.created_by = db_material.id
+        if not db_material.updated_by:
+            db_material.updated_by = db_material.id
+
         db.commit()
         db.refresh(db_material)
 
@@ -48,7 +56,9 @@ async def create_material(
             author=db_material.author,
             type=db_material.type,
             date_added=db_material.date_added,
-            is_deleted=db_material.is_deleted
+            is_deleted=db_material.is_deleted,
+            created_by=db_material.created_by,
+            updated_by=db_material.updated_by
         )
 
         return created_material

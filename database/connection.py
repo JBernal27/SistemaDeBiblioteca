@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Enum, ForeignKey, text
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
 from common import MaterialType
@@ -22,9 +22,9 @@ class User(Base):
     full_name = Column(String(100))
     password = Column(String(255), nullable=False)
     rol = Column(String(20), default="cliente")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     updated_by = Column(String(36), ForeignKey("users.id"), nullable=True)
     is_deleted = Column(Boolean, default=False)
 
@@ -44,9 +44,9 @@ class Material(Base):
     author = Column(String(100), nullable=False)
     type = Column(Enum(MaterialType, name="material_type_enum"), nullable=False)
     is_deleted = Column(Boolean, default=False)
-    date_added = Column(DateTime, default=datetime.utcnow)
+    date_added = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     updated_by = Column(String(36), ForeignKey("users.id"), nullable=True)
 
     loans = relationship("Loan", back_populates="material")
@@ -62,12 +62,12 @@ class Loan(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     material_id = Column(String(36), ForeignKey("materials.id"), nullable=False)
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    loan_date = Column(DateTime, default=datetime.utcnow)
+    loan_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expected_return_date = Column(DateTime, nullable=False)
     actual_return_date = Column(DateTime)
     is_returned = Column(Boolean, default=False)
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     updated_by = Column(String(36), ForeignKey("users.id"), nullable=True)
 
     material = relationship("Material", back_populates="loans")
@@ -131,7 +131,7 @@ def migrate_database():
             loan1 = Loan(
                 material_id=m1_id,
                 user_id=user1_id,
-                expected_return_date=datetime.utcnow(),
+                expected_return_date=datetime.now(timezone.utc),
                 created_by=admin_id,
                 updated_by=admin_id,
                 id=str(uuid4())
@@ -139,7 +139,7 @@ def migrate_database():
             loan2 = Loan(
                 material_id=m2_id,
                 user_id=admin_id,
-                expected_return_date=datetime.utcnow(),
+                expected_return_date=datetime.now(timezone.utc),
                 created_by=admin_id,
                 updated_by=admin_id,
                 id=str(uuid4())

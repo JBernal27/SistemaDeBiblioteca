@@ -4,12 +4,14 @@ from sqlalchemy import select
 from models.schemas import UserResponse
 from database.connection import User as UserDB
 from database.connection import get_db
+from uuid import UUID
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 @router.delete("/{user_id}", response_model=UserResponse)
 async def delete_user(
-    user_id: int,
+    user_id: UUID,
     db: Session = Depends(get_db)
 ):
     try:
@@ -24,7 +26,10 @@ async def delete_user(
             )
 
         user_db.is_deleted = True
+        user_db.updated_at = datetime.now(timezone.utc)
+        user_db.updated_by = user_id
         db.commit()
+        db.refresh(user_db)
 
         return UserResponse(
             message=f"Usuario '{user_db.full_name}' eliminado exitosamente",

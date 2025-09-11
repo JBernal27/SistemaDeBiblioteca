@@ -6,14 +6,15 @@ from sqlalchemy.exc import IntegrityError
 from database.connection import get_db
 from models.schemas import LoanUpdate, LoanResponse
 from database.connection import Loan as LoanDB
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import select
+from uuid import UUID
 
 router = APIRouter(prefix="/loans", tags=["loans"])
 
 @router.put("/{loan_id}/return", response_model=LoanResponse)
 async def return_loan(
-    loan_id: int,
+    loan_id: UUID,
     db: Session = Depends(get_db)
 ):
     """
@@ -35,12 +36,24 @@ async def return_loan(
             )
 
         db_loan.is_returned = True
-        db_loan.actual_return_date = datetime.utcnow()
+        db_loan.actual_return_date = datetime.now(timezone.utc)
+        db_loan.updated_at = datetime.now(timezone.utc)
+        db_loan.updated_by = loan_id  #? Temporal hasta implemtentar JWT
 
         db.commit()
         db.refresh(db_loan)
 
-        return db_loan  # FastAPI lo serializa a LoanResponse
+        return LoanResponse(
+            id=db_loan.id,
+            material_id=db_loan.material_id,
+            user_id=db_loan.user_id,
+            loan_date=db_loan.loan_date,
+            expected_return_date=db_loan.expected_return_date,
+            actual_return_date=db_loan.actual_return_date,
+            is_returned=db_loan.is_returned,
+            created_by=db_loan.created_by,
+            updated_by=db_loan.updated_by
+        )
 
     except HTTPException:
         db.rollback()
