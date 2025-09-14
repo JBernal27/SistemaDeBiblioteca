@@ -6,12 +6,13 @@ from models.schemas import User, UserUpdate
 from database.connection import User as UserDB
 from database.connection import get_db
 import hashlib
+from uuid import UUID
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 @router.put("/{user_id}", response_model=User)
 async def update_user(
-    user_id: int,
+    user_id: UUID,
     user_update: UserUpdate,
     db: Session = Depends(get_db)
 ):
@@ -34,6 +35,7 @@ async def update_user(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="El email ya está registrado"
                 )
+        user_db.updated_by = user_id #?Temporal hasta implementar JWT
 
         for key, value in update_data.items():
             if key == "password":

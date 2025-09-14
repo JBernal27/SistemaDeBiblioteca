@@ -6,6 +6,7 @@ from models.schemas import User, UserCreate
 from database.connection import User as UserDB
 from database.connection import get_db
 import hashlib
+from uuid import uuid4
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -18,13 +19,12 @@ async def create_user(
     Crea un nuevo usuario
     """
     try:
-        for field, value in [("username", user.username), ("email", user.email)]:
-            stmt = select(UserDB).where(getattr(UserDB, field) == value)
-            if db.execute(stmt).scalar_one_or_none():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"El {field} ya está registrado"
-                )
+        stmt = select(UserDB).where(UserDB.email == user.email)
+        if db.execute(stmt).scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El email ya está registrado"
+            )
 
         hashed_password = hashlib.sha256(user.password.encode()).hexdigest()
 
@@ -37,6 +37,9 @@ async def create_user(
         )
 
         db.add(db_user)
+        db.flush()
+        db_user.created_by = db_user.id
+        db_user.updated_by = db_user.id
         db.commit()
         db.refresh(db_user)
 

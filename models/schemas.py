@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import datetime
 from common import MaterialType, RolEnum
+from uuid import UUID
 
 # -----------------------------
 # Pydantic models para la API
@@ -18,13 +19,13 @@ class UserCreate(UserBase):
     rol: RolEnum = Field(default=RolEnum.cliente, description="Rol del usuario")
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = Field(None, max_length=100)
-    password: Optional[str] = Field(None, min_length=6)
+    full_name: Optional[str] = Field(None, max_length=100, description="Nombre completo")
+    password: Optional[str] = Field(None, min_length=6, max_length=255, description="Contraseña del usuario")
     rol: Optional[RolEnum] = None
+    updated_by: Optional[UUID] = None
 
 class User(UserBase):
-    id: int
+    id: UUID
     rol: RolEnum
     created_at: datetime
     is_deleted: bool = Field(default=False)
@@ -50,22 +51,22 @@ class MaterialBase(BaseModel):
 
 
 class MaterialCreate(MaterialBase):
-    """DTO para crear material"""
     pass
 
 
-class MaterialUpdate(BaseModel):
-    """DTO para actualizar material (parcial)"""
-    title: Optional[str] = Field(None, max_length=200)
-    author: Optional[str] = Field(None, max_length=100)
-    type: Optional[MaterialType] = Field(None, description="Nuevo tipo de material")
+class MaterialUpdate(MaterialBase):
+    title: Optional[str] = Field(None, max_length=200, description="Título del material")
+    author: Optional[str] = Field(None, max_length=100, description="Autor del material")
+    type: Optional[MaterialType] = Field(None, description="Tipo de material (book, newspaper, magazine)")
+    updated_by: Optional[UUID] = None
 
 
 class Material(MaterialBase):
-    """DTO de respuesta del material"""
-    id: int
+    id: UUID
+    is_deleted: bool = Field(default=False)
     date_added: datetime
-    is_deleted: bool = Field(False, description="Indica si el material está marcado como eliminado")
+    created_by: Optional[UUID] = None
+    updated_by: Optional[UUID] = None
 
     class Config:
         from_attributes = True  # ✅ permite mapear desde ORM
@@ -83,17 +84,31 @@ class MaterialResponse(BaseModel):
 # -----------------------------
 
 class LoanBase(BaseModel):
-    material_id: int
-    user_id: int
+    material_id: UUID
+    user_id: UUID
     expected_return_date: datetime
 
 class LoanCreate(LoanBase):
     pass
 
+
 class LoanUpdate(BaseModel):
     expected_return_date: Optional[datetime] = None
     actual_return_date: Optional[datetime] = None
     is_returned: Optional[bool] = None
+    updated_by: Optional[UUID] = None
+
+class Loan(LoanBase):
+    id: UUID
+    loan_date: datetime
+    actual_return_date: Optional[datetime] = None
+    is_returned: bool = Field(default=False)
+    created_by: Optional[UUID] = None
+    updated_by: Optional[UUID] = None
+
+    class Config:
+        orm_mode = True
+
 class LoanResponse(LoanBase):
     id: int
     loan_date: datetime

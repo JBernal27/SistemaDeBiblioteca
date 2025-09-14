@@ -5,11 +5,13 @@ from sqlalchemy.orm import Session
 from database.connection import Material as MaterialDB
 from database.connection import get_db
 from sqlalchemy.exc import IntegrityError
+from uuid import UUID
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
 @router.put("/{material_id}", response_model=Material)
-async def update_material(material_id: int, updated_data: MaterialUpdate, db: Session = Depends(get_db)):
+async def update_material(material_id: UUID, updated_data: MaterialUpdate, db: Session = Depends(get_db)):
     try:
         material = db.get(MaterialDB, material_id) 
         if not material or material.is_deleted:
@@ -18,9 +20,13 @@ async def update_material(material_id: int, updated_data: MaterialUpdate, db: Se
                 detail="Material no encontrado"
             )
 
-        update_data = updated_data.dict(exclude_unset=True)
+        update_data_dict = updated_data.dict(exclude_unset=True)
 
-        for key, value in update_data.items():
+        material.updated_by = material.created_by #? Temporal hasta implemtentar JWT
+
+        material.updated_at = datetime.now(timezone.utc)
+
+        for key, value in update_data_dict.items():
             if key == "type" and isinstance(value, MaterialType):
                 setattr(material, key, value.value)
             else:
@@ -29,7 +35,16 @@ async def update_material(material_id: int, updated_data: MaterialUpdate, db: Se
         db.commit()
         db.refresh(material)
 
-        return material
+        return Material(
+            id=material.id,
+            title=material.title,
+            author=material.author,
+            type=material.type,
+            date_added=material.date_added,
+            is_deleted=material.is_deleted,
+            created_by=material.created_by,
+            updated_by=material.updated_by
+        )
 
     except IntegrityError:
         db.rollback()

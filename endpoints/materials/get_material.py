@@ -5,12 +5,13 @@ from database.connection import Material as MaterialDB
 from database.connection import get_db
 from sqlalchemy import select, func
 from typing import List
+from uuid import UUID
 
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
 @router.get("/{material_id}", response_model=Material)
-async def get_material(material_id: int, db: Session = Depends(get_db)):
+async def get_material(material_id: UUID, db: Session = Depends(get_db)):
     """
     Obtiene un material por su ID
     """
@@ -21,7 +22,16 @@ async def get_material(material_id: int, db: Session = Depends(get_db)):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Material no encontrado"
             )
-        return material
+        return Material(
+            id=material.id,
+            title=material.title,
+            author=material.author,
+            type=material.type,
+            date_added=material.date_added,
+            is_deleted=material.is_deleted,
+            created_by=material.created_by,
+            updated_by=material.updated_by
+        )
 
     except Exception as e:
         raise HTTPException(
@@ -37,7 +47,19 @@ async def get_all_materials(db: Session = Depends(get_db)):
     try:
         stmt = select(MaterialDB).where(MaterialDB.is_deleted == False)
         result = db.execute(stmt).scalars().all()
-        return result
+        return [
+            Material(
+                id=m.id,
+                title=m.title,
+                author=m.author,
+                type=m.type,
+                date_added=m.date_added,
+                is_deleted=m.is_deleted,
+                created_by=m.created_by,
+                updated_by=m.updated_by
+            )
+            for m in result
+        ]
 
     except Exception as e:
         raise HTTPException(
@@ -56,4 +78,16 @@ def search_by_author(author: str, db: Session = Depends(get_db)):
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se encontraron materiales con ese autor")
 
-    return result
+    return [
+        Material(
+            id=m.id,
+            title=m.title,
+            author=m.author,
+            type=m.type,
+            date_added=m.date_added,
+            is_deleted=m.is_deleted,
+            created_by=m.created_by,
+            updated_by=m.updated_by
+        )
+        for m in result
+    ]

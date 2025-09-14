@@ -5,6 +5,7 @@ from sqlalchemy import select
 from models.schemas import User
 from database.connection import User as UserDB
 from database.connection import get_db
+from uuid import UUID
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -26,7 +27,9 @@ async def get_users(
                 full_name=u.full_name,
                 rol=u.rol,
                 created_at=u.created_at,
-                is_deleted=u.is_deleted
+                is_deleted=u.is_deleted,
+                created_by=u.created_by,
+                updated_by=u.updated_by
             )
             for u in users_db
         ]
@@ -41,7 +44,7 @@ async def get_users(
 
 @router.get("/{user_id}", response_model=User)
 async def get_user(
-    user_id: int,
+    user_id: UUID,
     db: Session = Depends(get_db)
 ):
     try:
@@ -61,7 +64,9 @@ async def get_user(
             full_name=user_db.full_name,
             rol=user_db.rol,
             created_at=user_db.created_at,
-            is_deleted=user_db.is_deleted
+            is_deleted=user_db.is_deleted,
+            created_by=user_db.created_by,
+            updated_by=user_db.updated_by
         )
 
     except HTTPException:

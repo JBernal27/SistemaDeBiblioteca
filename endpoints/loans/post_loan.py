@@ -5,6 +5,7 @@ from database.connection import get_db
 from models.schemas import LoanCreate, LoanResponse
 from database.connection import Loan as LoanDB, Material as MaterialDB, User as UserDB
 from sqlalchemy import select
+from uuid import UUID
 
 router = APIRouter(prefix="/loans", tags=["loans"])
 
@@ -51,14 +52,17 @@ async def create_loan(
         db_loan = LoanDB(
             material_id=loan.material_id,
             user_id=loan.user_id,
-            expected_return_date=loan.expected_return_date,
+            expected_return_date=loan.expected_return_date
         )
 
         db.add(db_loan)
+        db.flush()
+        db_loan.created_by = loan.user_id #? Temporal hasta implemtentar JWT
+        db_loan.updated_by = loan.user_id #? Temporal hasta implemtentar JWT
         db.commit()
         db.refresh(db_loan)
 
-        return db_loan  # FastAPI lo convierte a LoanResponse por orm_mode
+        return db_loan
 
     except HTTPException:
         db.rollback()
