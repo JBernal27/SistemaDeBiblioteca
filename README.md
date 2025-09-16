@@ -119,7 +119,8 @@ LOG_LEVEL=debug
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 
 # Seguridad
-SECRET_KEY=clave_secreta_para_desarrollo_cambiar_en_produccion
+SECRET_KEY = "secretito123"
+ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES=30
 ```
 

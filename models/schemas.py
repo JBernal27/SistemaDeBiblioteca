@@ -14,10 +14,6 @@ class UserBase(BaseModel):
     email: EmailStr = Field(..., description="Email del usuario")
     full_name: Optional[str] = Field(None, max_length=100, description="Nombre completo")
 
-class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, max_length=255, description="Contraseña del usuario")
-    rol: RolEnum = Field(default=RolEnum.cliente, description="Rol del usuario")
-
 class UserUpdate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=100, description="Nombre completo")
     password: Optional[str] = Field(None, min_length=6, max_length=255, description="Contraseña del usuario")
@@ -54,7 +50,7 @@ class MaterialCreate(MaterialBase):
     pass
 
 
-class MaterialUpdate(MaterialBase):
+class MaterialUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=200, description="Título del material")
     author: Optional[str] = Field(None, max_length=100, description="Autor del material")
     type: Optional[MaterialType] = Field(None, description="Tipo de material (book, newspaper, magazine)")
@@ -117,3 +113,31 @@ class LoanResponse(LoanBase):
 
     class Config:
         orm_mode = True
+
+# -----------------------------
+# Auth DTOs
+# -----------------------------
+
+class TokenData(BaseModel):
+    id: Optional[int] = None
+    email: Optional[str] = None
+    rol: Optional[RolEnum] = None
+
+class LoginDTO(BaseModel):
+    email: EmailStr
+    password: str
+
+class LoginResponse(BaseModel):
+    message: str
+    token: Optional[str] = None
+    error: Optional[str] = None
+
+class RegisterDTO(UserBase):
+    password: str = Field(..., min_length=6, max_length=255, description="Contraseña del usuario")
+    rol: RolEnum = Field(default=RolEnum.cliente, description="Rol del usuario")
+
+class RegisterResponse(BaseModel):
+    message: str
+    user: Optional[User] = None
+    error: Optional[str] = None
+    token: Optional[str] = None

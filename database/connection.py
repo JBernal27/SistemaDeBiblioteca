@@ -9,6 +9,8 @@ from uuid import uuid4
 load_dotenv()
 
 connection_string = os.getenv('SQL_SERVER_CONNECTION_STRING')
+if not connection_string:
+    raise ValueError("SQL_SERVER_CONNECTION_STRING environment variable is not set.")
 engine = create_engine(connection_string, echo=True, pool_pre_ping=True, pool_recycle=300)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
