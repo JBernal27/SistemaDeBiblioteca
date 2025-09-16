@@ -1,4 +1,13 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Enum, ForeignKey, text
+from sqlalchemy import (
+    create_engine,
+    Column,
+    String,
+    DateTime,
+    Boolean,
+    Enum,
+    ForeignKey,
+    text,
+)
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from datetime import datetime, timezone
 import os
@@ -8,12 +17,15 @@ from uuid import uuid4
 
 load_dotenv()
 
-connection_string = os.getenv('SQL_SERVER_CONNECTION_STRING')
+connection_string = os.getenv("SQL_SERVER_CONNECTION_STRING")
 if not connection_string:
     raise ValueError("SQL_SERVER_CONNECTION_STRING environment variable is not set.")
-engine = create_engine(connection_string, echo=True, pool_pre_ping=True, pool_recycle=300)
+engine = create_engine(
+    connection_string, echo=True, pool_pre_ping=True, pool_recycle=300
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
 
 class User(Base):
     __tablename__ = "users"
@@ -25,7 +37,11 @@ class User(Base):
     rol = Column(String(20), default="cliente")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String(36), nullable=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
     updated_by = Column(String(36), nullable=True)
     is_deleted = Column(Boolean, default=False)
 
@@ -45,13 +61,20 @@ class Material(Base):
     is_deleted = Column(Boolean, default=False)
     date_added = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String(36), nullable=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
     updated_by = Column(String(36), nullable=True)
 
-    loans = relationship("Loan", foreign_keys="Loan.material_id", back_populates="material")
+    loans = relationship(
+        "Loan", foreign_keys="Loan.material_id", back_populates="material"
+    )
 
     def __repr__(self):
         return f"<Material(title={self.title}, author={self.author}, type={self.type})>"
+
 
 class Loan(Base):
     __tablename__ = "loans"
@@ -64,7 +87,11 @@ class Loan(Base):
     actual_return_date = Column(DateTime)
     is_returned = Column(Boolean, default=False)
     created_by = Column(String(36), nullable=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
     updated_by = Column(String(36), nullable=True)
 
     material = relationship("Material", back_populates="loans")
@@ -82,37 +109,56 @@ def create_tables():
 def migrate_database():
     Base.metadata.create_all(bind=engine)
 
+    # Configurar el hash de contraseñas
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
     with SessionLocal() as db:
         if db.query(User).count() == 0:
             admin = User(
                 email="admin@ejemplo.com",
                 full_name="Administrador",
-                password="hashed_password",
+                password=pwd_context.hash("admin123"),
                 rol="admin",
-                id=str(uuid4())
+                id=str(uuid4()),
             )
             user1 = User(
                 email="usuario1@ejemplo.com",
                 full_name="Juan Pérez",
-                password="hashed_password",
+                password=pwd_context.hash("user123"),
                 rol="cliente",
-                id=str(uuid4())
+                id=str(uuid4()),
             )
             db.add_all([admin, user1])
             print("👤 Usuarios de ejemplo insertados.")
-            
+
             admin_id = admin.id
             user1_id = user1.id
 
         else:
-            # If users already exist, fetch their IDs (assuming admin and user1 are still the first two)
             admin_id = db.query(User.id).filter_by(email="admin@ejemplo.com").scalar()
-            user1_id = db.query(User.id).filter_by(email="usuario1@ejemplo.com").scalar()
+            user1_id = (
+                db.query(User.id).filter_by(email="usuario1@ejemplo.com").scalar()
+            )
             print("⚠️ Ya existen usuarios, no se insertaron de nuevo.")
 
         if db.query(Material).count() == 0:
-            m1 = Material(title="El Principito", author="Antoine de Saint-Exupéry", type="book", created_by=admin_id, updated_by=admin_id, id=str(uuid4()))
-            m2 = Material(title="Don Quijote", author="Miguel de Cervantes", type="book", created_by=admin_id, updated_by=admin_id, id=str(uuid4()))
+            m1 = Material(
+                title="El Principito",
+                author="Antoine de Saint-Exupéry",
+                type="book",
+                created_by=admin_id,
+                updated_by=admin_id,
+                id=str(uuid4()),
+            )
+            m2 = Material(
+                title="Don Quijote",
+                author="Miguel de Cervantes",
+                type="book",
+                created_by=admin_id,
+                updated_by=admin_id,
+                id=str(uuid4()),
+            )
             db.add_all([m1, m2])
             print("📚 Materiales de ejemplo insertados.")
             m1_id = m1.id
@@ -121,7 +167,7 @@ def migrate_database():
             m1_id = db.query(Material.id).filter_by(title="El Principito").scalar()
             m2_id = db.query(Material.id).filter_by(title="Don Quijote").scalar()
             print("⚠️ Ya existen materiales, no se insertaron de nuevo.")
-        
+
         if db.query(Loan).count() == 0:
             loan1 = Loan(
                 material_id=m1_id,
@@ -129,7 +175,7 @@ def migrate_database():
                 expected_return_date=datetime.now(timezone.utc),
                 created_by=admin_id,
                 updated_by=admin_id,
-                id=str(uuid4())
+                id=str(uuid4()),
             )
             loan2 = Loan(
                 material_id=m2_id,
@@ -137,7 +183,7 @@ def migrate_database():
                 expected_return_date=datetime.now(timezone.utc),
                 created_by=admin_id,
                 updated_by=admin_id,
-                id=str(uuid4())
+                id=str(uuid4()),
             )
             db.add_all([loan1, loan2])
             print("Prestamos de ejemplo insertados.")
@@ -147,7 +193,6 @@ def migrate_database():
         db.commit()
 
     print("✅ Migración ejecutada correctamente.")
-
 
 
 def test_connection():
@@ -165,6 +210,7 @@ if __name__ == "__main__":
     print("🔄 Probando conexión a la base de datos...")
     if test_connection():
         migrate_database()
+
 
 def get_db():
     db = SessionLocal()

@@ -10,25 +10,24 @@ from datetime import datetime, timezone
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
+
 @router.delete("/{material_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_material(
-    material_id: UUID,
-    db: Session = Depends(get_db)
-):
+async def delete_material(material_id: UUID, db: Session = Depends(get_db)):
     """
     Elimina (soft delete) un material por su ID
     """
     try:
         material = db.get(MaterialDB, material_id)
-        if not material or material.is_deleted:
+        if not material or bool(material.is_deleted):
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Material no encontrado"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Material no encontrado"
             )
 
-        material.is_deleted = True
-        material.updated_at = datetime.now(timezone.utc)
-        material.updated_by = material_id #? Temporal hasta implemtentar JWT
+        material = MaterialDB(
+            is_deleted=True,
+            updated_by=material.updated_by,  # ? Temporal hasta implemtentar JWT
+            updated_at=datetime.now(timezone.utc)
+        )
         db.commit()
         db.refresh(material)
 
@@ -36,5 +35,5 @@ async def delete_material(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail=f"Error interno del servidor: {str(e)}",
         )

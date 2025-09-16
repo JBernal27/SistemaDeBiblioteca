@@ -10,11 +10,10 @@ from uuid import UUID
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-@router.put("/{user_id}", response_model=User)
+
+@router.put("/{user_id}", response_model=User, status_code=status.HTTP_200_OK)
 async def update_user(
-    user_id: UUID,
-    user_update: UserUpdate,
-    db: Session = Depends(get_db)
+    user_id: UUID, user_update: UserUpdate, db: Session = Depends(get_db)
 ):
     try:
         stmt = select(UserDB).where(UserDB.id == user_id, UserDB.is_deleted == False)
@@ -22,20 +21,21 @@ async def update_user(
 
         if not user_db:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Usuario no encontrado"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
             )
 
-        update_data = user_update.dict(exclude_unset=True)
+        update_data = user_update.model_dump(exclude_unset=True)
+        update_data["updated_by"] = str(user_id)  # ?Temporal hasta implementar JWT
 
         if "email" in update_data and update_data["email"] != user_db.email:
-            stmt = select(UserDB).where(UserDB.email == update_data["email"], UserDB.id != user_id)
+            stmt = select(UserDB).where(
+                UserDB.email == update_data["email"], UserDB.id != user_id
+            )
             if db.execute(stmt).scalar_one_or_none():
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="El email ya está registrado"
+                    detail="El email ya está registrado",
                 )
-        user_db.updated_by = user_id #?Temporal hasta implementar JWT
 
         for key, value in update_data.items():
             if key == "password":
@@ -54,11 +54,11 @@ async def update_user(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Error de integridad en la base de datos"
+            detail="Error de integridad en la base de datos",
         )
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail=f"Error interno del servidor: {str(e)}",
         )

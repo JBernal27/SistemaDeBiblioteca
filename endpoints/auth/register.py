@@ -2,57 +2,65 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from models.schemas import User, RegisterDTO
-from database.connection import User as UserDB
-from database.connection import get_db
-import hashlib
+from models.schemas import RegisterDTO, LoginResponse, LoginDTO
+from database.connection import User as UserDB, get_db
+from passlib.context import CryptContext
+import os
+from dotenv import load_dotenv
+from .login import login
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
-async def create_user(
-    user: RegisterDTO,
-    db: Session = Depends(get_db)
-):
-    """
-    Crea un nuevo usuario
-    """
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback_secret")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+
+
+@router.post(
+    "/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED
+)
+async def create_user(user: RegisterDTO, db: Session = Depends(get_db)):
     try:
-        for field, value in ("email", user.email):
-            stmt = select(UserDB).where(getattr(UserDB, field) == value)
-            if db.execute(stmt).scalar_one_or_none():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"El {field} ya está registrado"
-                )
+        stmt = select(UserDB).where(UserDB.email == user.email)
+        if db.execute(stmt).scalar_one_or_none():
+            return LoginResponse(
+                message="El correo ya está registrado", error="400 Bad Request"
+            )
 
-        hashed_password = hashlib.sha256(user.password.encode()).hexdigest()
+        hashed_password = pwd_context.hash(user.password)
 
         db_user = UserDB(
             email=user.email,
             full_name=user.full_name,
             password=hashed_password,
             rol=user.rol,
-            is_deleted=False
+            is_deleted=False,
         )
 
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
 
-        return db_user
-    except HTTPException:
-        db.rollback()
-        raise
+        """
+        Reutilizar la lógica de login para devolver token/response
+        `login` espera un LoginDTO y una sesión (Depends(get_db) proporciona Session)
+        """
+        return login(
+            data=LoginDTO(email=user.email, password=user.password),
+            db=db
+        )
+
     except IntegrityError:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Error de integridad en la base de datos"
+        return LoginResponse(
+            message="Error de integridad en la base de datos", error="400 Bad Request"
         )
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno del servidor: {str(e)}"
+        return LoginResponse(
+            message="Error interno del servidor",
+            error=f"500 Internal Server Error: {str(e)}",
         )

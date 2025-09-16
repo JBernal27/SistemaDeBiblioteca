@@ -2,37 +2,38 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from models.schemas import Material, MaterialCreate
 from common import MaterialType
 from sqlalchemy.orm import Session
-from database.connection import Material as MaterialDB
-from database.connection import get_db
+from database.connection import get_db, Material as MaterialDB
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from uuid import UUID
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
+
 @router.post("/", response_model=Material, status_code=status.HTTP_201_CREATED)
-async def create_material(
-    material: MaterialCreate,
-    db: Session = Depends(get_db)
-):
+async def create_material(material: MaterialCreate, db: Session = Depends(get_db)):
     """
     Crea un nuevo material
     """
     try:
-        if material.type not in MaterialType.__members__.values():
+        valid_types = [t.value for t in MaterialType]
+        if material.type.value not in valid_types:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Tipo inválido. Debe ser uno de: {[t.value for t in MaterialType]}"
+                detail=f"Tipo inválido. Debe ser uno de: {valid_types}",
             )
 
-        stmt = select(MaterialDB).where(MaterialDB.title == material.title)
-        result = db.execute(stmt)
-        if result.scalar_one_or_none():
+        exists = db.query(MaterialDB).filter(
+            MaterialDB.title == material.title,
+            MaterialDB.is_deleted.is_(False)
+        ).first() is not None
+        
+        if exists:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="El material ya existe"
             )
-        
+
+        # Crear el material con todos sus campos
         db_material = MaterialDB(
             title=material.title,
             author=material.author,
@@ -40,26 +41,15 @@ async def create_material(
         )
 
         db.add(db_material)
-        db.flush()
+        db.flush()  # Genera el ID
 
-        if not db_material.created_by:
-            db_material.created_by = db_material.id
-        if not db_material.updated_by:
-            db_material.updated_by = db_material.id
-
+        setattr(db_material, 'created_by', str(db_material.id))  #? Temporal hasta implementar JWT
+        setattr(db_material, 'updated_by', str(db_material.id))  # ?Temporal hasta implementar JWT
+        
         db.commit()
         db.refresh(db_material)
-
-        created_material = Material(
-            id=db_material.id,
-            title=db_material.title,
-            author=db_material.author,
-            type=db_material.type,
-            date_added=db_material.date_added,
-            is_deleted=db_material.is_deleted,
-            created_by=db_material.created_by,
-            updated_by=db_material.updated_by
-        )
+        
+        created_material = Material.model_validate(db_material, from_attributes=True)
 
         return created_material
 
@@ -70,11 +60,11 @@ async def create_material(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Error de integridad en la base de datos"
+            detail="Error de integridad en la base de datos",
         )
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail=f"Error interno del servidor: {str(e)}",
         )

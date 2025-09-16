@@ -9,44 +9,37 @@ from uuid import UUID
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-@router.get("/", response_model=List[User])
+
+@router.get("/", response_model=List[User], status_code=status.HTTP_200_OK)
 async def get_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     try:
-        stmt = select(UserDB).where(UserDB.is_deleted == False).order_by(UserDB.id).offset(skip).limit(limit)
+        stmt = (
+            select(UserDB)
+            .where(UserDB.is_deleted == False)
+            .order_by(UserDB.id)
+            .offset(skip)
+            .limit(limit)
+        )
         result = db.execute(stmt)
         users_db = result.scalars().all()
 
-        users = [
-            User(
-                id=u.id,
-                email=u.email,
-                full_name=u.full_name,
-                rol=u.rol,
-                created_at=u.created_at,
-                is_deleted=u.is_deleted,
-                created_by=u.created_by,
-                updated_by=u.updated_by
-            )
-            for u in users_db
-        ]
+        users = [User.model_validate(u, from_attributes=True) for u in users_db]
 
         return users
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail=f"Error interno del servidor: {str(e)}",
         )
 
+
 @router.get("/{user_id}", response_model=User)
-async def get_user(
-    user_id: UUID,
-    db: Session = Depends(get_db)
-):
+async def get_user(user_id: UUID, db: Session = Depends(get_db)):
     try:
         stmt = select(UserDB).where(UserDB.id == user_id, UserDB.is_deleted == False)
         result = db.execute(stmt)
@@ -54,25 +47,15 @@ async def get_user(
 
         if not user_db:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Usuario no encontrado"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
             )
 
-        return User(
-            id=user_db.id,
-            email=user_db.email,
-            full_name=user_db.full_name,
-            rol=user_db.rol,
-            created_at=user_db.created_at,
-            is_deleted=user_db.is_deleted,
-            created_by=user_db.created_by,
-            updated_by=user_db.updated_by
-        )
+        return User.model_validate(user_db, from_attributes=True)
 
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail=f"Error interno del servidor: {str(e)}",
         )
