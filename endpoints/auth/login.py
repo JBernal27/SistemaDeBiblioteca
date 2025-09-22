@@ -26,7 +26,7 @@ def login(data: LoginDTO, db: Session = Depends(get_db)):
         .filter(UserDB.email == data.email, UserDB.is_deleted == False)
         .first()
     )
-    # user.password may be seen by static checkers as a Column; cast to str for verify
+    
     if not user or not pwd_context.verify(data.password, cast(str, user.password)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -36,7 +36,7 @@ def login(data: LoginDTO, db: Session = Depends(get_db)):
 
     payload = {
         "id": str(user.id),
-        "email": user.email,
+        "full_name": user.full_name,
         "rol": user.rol,
     }
 

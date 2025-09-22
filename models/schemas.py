@@ -12,9 +12,11 @@ from uuid import UUID
 # User Model and DTOs
 # -----------------------------
 class UserBase(BaseModel):
-    email: EmailStr = Field(..., description="Email del usuario")
+    email: EmailStr = Field(
+        ..., description="Email del usuario", examples=["admin@ejemplo.com"]
+    )
     full_name: Optional[str] = Field(
-        None, max_length=100, description="Nombre completo"
+        None, max_length=100, description="Nombre completo", examples=["Admin"]
     )
 
 
@@ -150,7 +152,7 @@ class LoanResponse(LoanBase):
 
 
 class TokenData(BaseModel):
-    id: Optional[int] = None
+    id: Optional[UUID] = None
     email: Optional[str] = None
     rol: Optional[RolEnum] = None
 
@@ -168,10 +170,17 @@ class LoginResponse(BaseModel):
 
 class RegisterDTO(UserBase):
     password: str = Field(
-        ..., min_length=6, max_length=255, description="Contraseña del usuario"
+        ...,
+        min_length=6,
+        max_length=255,
+        description="Contraseña del usuario",
+        examples=["admin1234"],
     )
-    rol: RolEnum = Field(default=RolEnum.cliente, description="Rol del usuario")
-
+    rol: RolEnum = Field(
+        default=RolEnum.cliente,
+        description="Rol del usuario",
+        examples=["admin", "cliente"],
+    )
 
 class RegisterResponse(BaseModel):
     message: str

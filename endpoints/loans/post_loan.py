@@ -2,18 +2,36 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from database.connection import get_db
-from models.schemas import LoanCreate, LoanResponse
+from models.schemas import LoanCreate, LoanResponse, TokenData
 from database.connection import Loan as LoanDB, Material as MaterialDB, User as UserDB
 from sqlalchemy import select
 from uuid import UUID
+from common.middleware import require_admin
 
 router = APIRouter(prefix="/loans", tags=["loans"])
 
 
 @router.post("/", response_model=LoanResponse, status_code=status.HTTP_201_CREATED)
-async def create_loan(loan: LoanCreate, db: Session = Depends(get_db)):
+async def create_loan(
+    loan: LoanCreate,
+    current_user: TokenData = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
     """
-    Crea un nuevo préstamo
+    Crea un nuevo préstamo en el sistema. Solo accesible para administradores.
+
+    Args:
+        loan: LoanCreate - Datos del préstamo a crear
+        current_user: TokenData - Token del administrador
+        db: Session - Sesión de la base de datos
+
+    Returns:
+        LoanResponse - Detalles del préstamo creado
+
+    Raises:
+        HTTPException(400) - Error de validación o material ya prestado
+        HTTPException(404) - Material o usuario no encontrado
+        HTTPException(500) - Error interno del servidor
     """
     try:
         stmt_material = select(MaterialDB).where(MaterialDB.id == loan.material_id)
@@ -44,8 +62,8 @@ async def create_loan(loan: LoanCreate, db: Session = Depends(get_db)):
             material_id=loan.material_id,
             user_id=loan.user_id,
             expected_return_date=loan.expected_return_date,
-            created_by=loan.user_id,  # ? Temporal hasta implemtentar JWT
-            updated_by=loan.user_id,  # ? Temporal hasta implemtentar JWT
+            created_by=current_user.id,
+            updated_by=current_user.id,
         )
 
         db.add(db_loan)

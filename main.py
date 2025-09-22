@@ -16,20 +16,29 @@ from endpoints import (
     register_router,
 )
 
-# Crear la aplicación FastAPI
+"""
+Crear la aplicación FastAPI
+"""
 app = FastAPI(
     title="Sistema de Biblioteca API",
     description="Desarrollo de una API REST completa para un sistema de biblioteca donde puedes gestionar libros, revistas y periódicos.",
     version="1.0.0",
 )
 
-# Configurar CORS
+"""
+Configurar CORS (Cross-Origin Resource Sharing)
+"""
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",  # Frontend
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",  # Backend (FastAPI)
+        "http://127.0.0.1:8000",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "accept"],
 )
 
 """
@@ -47,6 +56,7 @@ app.include_router(post_loan_router)
 app.include_router(put_loan_router)
 app.include_router(login_router)
 app.include_router(register_router)
+
 
 @app.on_event("startup")
 async def startup_event():
