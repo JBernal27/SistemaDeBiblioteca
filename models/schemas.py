@@ -176,11 +176,6 @@ class RegisterDTO(UserBase):
         description="Contraseña del usuario",
         examples=["admin1234"],
     )
-    rol: RolEnum = Field(
-        default=RolEnum.cliente,
-        description="Rol del usuario",
-        examples=["admin", "cliente"],
-    )
 
 class RegisterResponse(BaseModel):
     message: str

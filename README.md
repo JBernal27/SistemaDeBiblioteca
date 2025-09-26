@@ -210,7 +210,7 @@ CREATE TABLE loans (
 ### Datos de Ejemplo Insertados
 
 #### Usuarios
-- **admin** - `admin@ejemplo.com` / contraseña: `password` / **Rol: Admin**
+- **admin** - `admin@ejemplo.com` / contraseña: `admin123` / **Rol: Admin**
 - **usuario1** - `usuario1@ejemplo.com` / contraseña: `password` / **Rol: Cliente**
 - **maria_garcia** - `maria@ejemplo.com` / contraseña: `password` / **Rol: Cliente**
 - **bibliotecario** - `biblio@ejemplo.com` / contraseña: `password` / **Rol: Admin**

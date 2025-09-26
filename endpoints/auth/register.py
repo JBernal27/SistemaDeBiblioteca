@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, status, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 import os
 from dotenv import load_dotenv
 from .login import login
+from common import RolEnum
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -36,7 +37,7 @@ async def create_user(user: RegisterDTO, db: Session = Depends(get_db)):
             email=user.email,
             full_name=user.full_name,
             password=hashed_password,
-            rol=user.rol,
+            rol=RolEnum.cliente,
             is_deleted=False,
         )
 

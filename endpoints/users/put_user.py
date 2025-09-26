@@ -36,6 +36,12 @@ async def update_user(
         update_data = user_update.model_dump(exclude_unset=True)
         update_data["updated_by"] = str(current_user.id)
 
+        if "rol" in update_data and current_user.rol != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo los administradores pueden cambiar roles de usuario"
+            )
+
         if "email" in update_data and update_data["email"] != user_db.email:
             stmt = select(UserDB).where(
                 UserDB.email == update_data["email"], UserDB.id != user_id
