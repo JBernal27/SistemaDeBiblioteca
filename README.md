@@ -14,7 +14,7 @@ La API te permite hacer las operaciones típicas de una biblioteca:
 
 - **FastAPI**: Framework moderno y rápido para APIs con Python
 - **SQLAlchemy**: ORM robusto para manejo de base de datos
-- **SQL Server**: Base de datos empresarial de Microsoft
+- **Postgres**: Base de datos empresarial de Microsoft
 - **CRUD Completo**: Operaciones Create, Read, Update y Delete
 - **Sistema de Roles**: Control de acceso basado en roles (cliente/admin)
 - **Validación de Datos**: Con Pydantic para esquemas robustos
@@ -64,11 +64,11 @@ SistemaDeBiblioteca/
 
 ### Software Requerido
 - **Python 3.8+**
-- **SQL Server** (Express, Developer o Enterprise)
-- **ODBC Driver 17 for SQL Server**
+- **Postgres** (Express, Developer o Enterprise)
+- **ODBC Driver 17 for Postgres**
 
 ### Instalación de ODBC Driver
-1. Descarga el [ODBC Driver 17 for SQL Server](https://docs.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server)
+1. Descarga el [ODBC Driver 17 for Postgres](https://docs.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server)
 2. Instala según tu sistema operativo
 3. Verifica la instalación en el Administrador de Orígenes de Datos ODBC
 
@@ -100,7 +100,7 @@ pip install -r requirements.txt #Si no funciona probar con " py -m " o " python 
 Crea un archivo `.env` en la raíz del proyecto:
 
 ```env
-# Configuración de la base de datos SQL Server
+# Configuración de la base de datos Postgres
 SQL_SERVER_CONNECTION_STRING=mssql+pyodbc://localhost/SistemaDeBiblioteca?driver=ODBC+Driver+17+for+SQL+Server&TrustServerCertificate=yes&Encrypt=yes
 
 # Configuración del servidor
@@ -125,8 +125,8 @@ TOKEN_EXPIRE_MINUTES=30
 ```
 
 ### 5. Configurar Base de Datos
-1. Abre SQL Server Management Studio
-2. Conéctate a tu instancia de SQL Server
+1. Abre Postgres Management Studio
+2. Conéctate a tu instancia de Postgres
 3. Crea una nueva base de datos llamada `SistemaDeBiblioteca`
 4. **IMPORTANTE**: Marca la casilla "Trust Server Certificate" en la conexión
 
@@ -160,7 +160,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 
 Al iniciar la API, automáticamente se ejecuta:
 
-1. **Conexión a SQL Server**
+1. **Conexión a Postgres**
 2. **Creación de tablas** (si no existen)
 3. **Migración de esquemas**
 4. **Inserción de datos de ejemplo**
@@ -210,10 +210,9 @@ CREATE TABLE loans (
 ### Datos de Ejemplo Insertados
 
 #### Usuarios
-- **admin** - `admin@ejemplo.com` / contraseña: `admin123` / **Rol: Admin**
-- **usuario1** - `usuario1@ejemplo.com` / contraseña: `password` / **Rol: Cliente**
-- **maria_garcia** - `maria@ejemplo.com` / contraseña: `password` / **Rol: Cliente**
-- **bibliotecario** - `biblio@ejemplo.com` / contraseña: `password` / **Rol: Admin**
+- **Administrador** - `admin@ejemplo.com` / contraseña: `admin123` / **Rol: Admin**
+- **Juan Pérez** - `usuario1@ejemplo.com` / contraseña: `user123` / **Rol: Cliente**
+
 
 #### Materiales
 - **El Principito** - Antoine de Saint-Exupéry (Libro)
@@ -383,13 +382,13 @@ curl "http://localhost:8000/loans/my"
 ## Solución de Problemas
 
 ### Error: "Login failed for user"
-1. Verifica que SQL Server esté ejecutándose
+1. Verifica que Postgres esté ejecutándose
 2. Confirma que el string de conexión sea correcto
 3. Asegúrate de que el usuario tenga permisos
 4. Verifica que el ODBC Driver esté instalado
 
 ### Error: "Cannot open database"
-1. Crea la base de datos `SistemaDeBiblioteca` en SQL Server
+1. Crea la base de datos `SistemaDeBiblioteca` en Postgres
 2. Verifica que el nombre de la base de datos sea correcto
 3. Asegúrate de que el usuario tenga acceso a la base de datos
 
@@ -471,7 +470,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info
 
 - [Documentación de FastAPI](https://fastapi.tiangolo.com/)
 - [Documentación de SQLAlchemy](https://docs.sqlalchemy.org/)
-- [Documentación de SQL Server](https://docs.microsoft.com/en-us/sql/)
+- [Documentación de Postgres](https://docs.microsoft.com/en-us/sql/)
 - [Guía de ODBC Driver](https://docs.microsoft.com/en-us/sql/connect/odbc/)
 - [FastAPI Lifespan Events](https://fastapi.tiangolo.com/advanced/events/)
 
@@ -490,5 +489,5 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info
 ---
 
 **Proyecto desarrollado para:** Parcial 1 - Aplicaciones y Servicios Web  
-**Herramientas utilizadas:** FastAPI, Uvicorn, Postman, GitHub, SQLAlchemy y SQL Server
+**Herramientas utilizadas:** FastAPI, Uvicorn, Postman, GitHub, SQLAlchemy y Postgres
 
