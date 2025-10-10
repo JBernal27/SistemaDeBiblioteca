@@ -14,6 +14,22 @@ from endpoints import (
     put_loan_router,
     login_router,
     register_router,
+    get_roles_router,
+    post_role_router,
+    put_role_router,
+    delete_role_router,
+    get_authors_router,
+    post_author_router,
+    put_author_router,
+    delete_author_router,
+    get_material_types_router,
+    post_material_type_router,
+    put_material_type_router,
+    delete_material_type_router,
+    get_loan_status_router,
+    post_loan_status_router,
+    put_loan_status_router,
+    delete_loan_status_router,
 )
 
 """
@@ -42,20 +58,51 @@ app.add_middleware(
 )
 
 """
-Incluir routers de autenticación
+Incluir routers de la aplicación
 """
+# Routers de autenticación
+app.include_router(login_router)
+app.include_router(register_router)
+
+# Routers de usuarios
 app.include_router(get_users_router)
 app.include_router(put_user_router)
 app.include_router(delete_user_router)
+
+# Routers de materiales
 app.include_router(get_materials_router)
 app.include_router(post_material_router)
 app.include_router(put_material_router)
 app.include_router(delete_material_router)
+
+# Routers de préstamos
 app.include_router(get_loan_router)
 app.include_router(post_loan_router)
 app.include_router(put_loan_router)
-app.include_router(login_router)
-app.include_router(register_router)
+
+# Routers de roles
+app.include_router(get_roles_router)
+app.include_router(post_role_router)
+app.include_router(put_role_router)
+app.include_router(delete_role_router)
+
+# Routers de autores
+app.include_router(get_authors_router)
+app.include_router(post_author_router)
+app.include_router(put_author_router)
+app.include_router(delete_author_router)
+
+# Routers de tipos de material
+app.include_router(get_material_types_router)
+app.include_router(post_material_type_router)
+app.include_router(put_material_type_router)
+app.include_router(delete_material_type_router)
+
+# Routers de estados de préstamo
+app.include_router(get_loan_status_router)
+app.include_router(post_loan_status_router)
+app.include_router(put_loan_status_router)
+app.include_router(delete_loan_status_router)
 
 
 @app.on_event("startup")

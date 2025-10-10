@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from models.schemas import LoginDTO, LoginResponse
-from database.connection import get_db, User as UserDB
-from sqlalchemy.orm import Session
+from database.connection import get_db, User as UserDB, Role as RoleDB
+from sqlalchemy.orm import Session, joinedload
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 from typing import cast
@@ -23,6 +23,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 def login(data: LoginDTO, db: Session = Depends(get_db)):
     user = (
         db.query(UserDB)
+        .options(joinedload(UserDB.role))
         .filter(UserDB.email == data.email, UserDB.is_deleted == False)
         .first()
     )
@@ -37,7 +38,7 @@ def login(data: LoginDTO, db: Session = Depends(get_db)):
     payload = {
         "id": str(user.id),
         "full_name": user.full_name,
-        "rol": user.rol,
+        "role_name": user.role.name if user.role else None,
     }
 
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
