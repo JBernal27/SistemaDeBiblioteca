@@ -1,6 +1,5 @@
 from .users import (
     get_users_router,
-    post_user_router,
     put_user_router,
     delete_user_router
 )
@@ -18,9 +17,13 @@ from .loans import (
     put_loan_router
 )
 
+from .auth import (
+    login_router,
+    register_router
+)
+
 __all__ = [
     "get_users_router",
-    "post_user_router", 
     "put_user_router",
     "delete_user_router",
     "get_materials_router",
@@ -30,4 +33,6 @@ __all__ = [
     "get_loan_router",
     "post_loan_router",
     "put_loan_router"
+    ,"login_router",
+    "register_router"
 ]

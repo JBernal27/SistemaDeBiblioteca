@@ -1,60 +1,75 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from models.schemas import Material, MaterialUpdate
+from models.schemas import Material, MaterialUpdate, TokenData
 from common import MaterialType
 from sqlalchemy.orm import Session
 from database.connection import Material as MaterialDB
 from database.connection import get_db
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import update, select
 from uuid import UUID
 from datetime import datetime, timezone
+from common.middleware import require_admin
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
+
 @router.put("/{material_id}", response_model=Material)
-async def update_material(material_id: UUID, updated_data: MaterialUpdate, db: Session = Depends(get_db)):
+async def update_material(
+    material_id: UUID,
+    updated_data: MaterialUpdate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(require_admin),
+):
     try:
-        material = db.get(MaterialDB, material_id) 
-        if not material or material.is_deleted:
+        stmt = select(MaterialDB).where(MaterialDB.id == material_id)
+        material = db.execute(stmt).scalar_one_or_none()
+        if material is None:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Material no encontrado"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Material no encontrado"
+            )
+        if bool(material.is_deleted):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Material no encontrado"
             )
 
-        update_data_dict = updated_data.dict(exclude_unset=True)
+        update_data_dict = updated_data.model_dump(exclude_unset=True)
 
-        material.updated_by = material.created_by #? Temporal hasta implemtentar JWT
+        if "type" in update_data_dict and isinstance(update_data_dict["type"], MaterialType):
+            update_data_dict["type"] = update_data_dict["type"].value
 
-        material.updated_at = datetime.now(timezone.utc)
-
-        for key, value in update_data_dict.items():
-            if key == "type" and isinstance(value, MaterialType):
-                setattr(material, key, value.value)
-            else:
-                setattr(material, key, value)
-
-        db.commit()
-        db.refresh(material)
-
-        return Material(
-            id=material.id,
-            title=material.title,
-            author=material.author,
-            type=material.type,
-            date_added=material.date_added,
-            is_deleted=material.is_deleted,
-            created_by=material.created_by,
-            updated_by=material.updated_by
+        update_data_dict.update(
+            {
+                "updated_by": str(current_user.id),
+                "updated_at": datetime.now(timezone.utc),
+            }
         )
+
+        stmt = (
+            update(MaterialDB)
+            .where(MaterialDB.id == material_id)
+            .values(**update_data_dict)
+            .returning(MaterialDB)
+        )
+        result = db.execute(stmt)
+        db.commit()
+
+        updated_material = result.scalar_one_or_none()
+        if not updated_material:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Material no encontrado"
+            )
+
+        return Material.model_validate(updated_material, from_attributes=True)
 
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Error de integridad en la base de datos"
+            detail="Error de integridad en la base de datos",
         )
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail=f"Error interno del servidor: {str(e)}",
         )
