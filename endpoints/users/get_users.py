@@ -6,7 +6,6 @@ from models.schemas import User, TokenData
 from database.connection import User as UserDB
 from database.connection import get_db
 from uuid import UUID
-from common.enums.roles_enum import RolEnum
 from common.middleware import require_admin, get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -82,7 +81,7 @@ async def get_user(
         HTTPException(500) - Error interno del servidor
     """
     try:
-        if current_user.rol != RolEnum.admin and current_user.id != user_id:
+        if current_user.role_name != "admin" and current_user.id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes permiso para acceder a este recurso",

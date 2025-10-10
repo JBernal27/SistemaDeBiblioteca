@@ -3,12 +3,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from models.schemas import RegisterDTO, LoginResponse, LoginDTO
-from database.connection import User as UserDB, get_db
+from database.connection import User as UserDB, Role as RoleDB, get_db
 from passlib.context import CryptContext
 import os
 from dotenv import load_dotenv
 from .login import login
-from common import RolEnum
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -31,13 +30,20 @@ async def create_user(user: RegisterDTO, db: Session = Depends(get_db)):
                 message="El correo ya está registrado", error="400 Bad Request"
             )
 
+        # Buscar el rol de cliente por defecto
+        client_role = db.query(RoleDB).filter(RoleDB.name == "cliente").first()
+        if not client_role:
+            return LoginResponse(
+                message="Error: Rol de cliente no encontrado", error="500 Internal Server Error"
+            )
+
         hashed_password = pwd_context.hash(user.password)
 
         db_user = UserDB(
             email=user.email,
             full_name=user.full_name,
             password=hashed_password,
-            rol=RolEnum.cliente,
+            role_id=client_role.id,
             is_deleted=False,
         )
 

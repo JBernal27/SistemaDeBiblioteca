@@ -23,7 +23,6 @@ from datetime import datetime, timezone
 from typing import Optional
 import os
 from models.schemas import TokenData
-from common.enums.roles_enum import RolEnum
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
@@ -105,7 +104,7 @@ def verify_jwt_token(token: str) -> TokenData:
         return TokenData(
             id=payload.get("id"),
             email=payload.get("email"),
-            rol=payload.get("rol"),
+            role_name=payload.get("role_name"),
         )
     except JWTError as e:
         raise HTTPException(
@@ -148,8 +147,8 @@ def require_admin(user: TokenData = Depends(get_current_user)) -> TokenData:
     Raises:
         HTTPException(403): Si el usuario no tiene rol de administrador.
     """
-    if user.rol != RolEnum.admin:
-        print(user.rol)
+    if user.role_name != "admin":
+        print(user.role_name)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required"
         )
