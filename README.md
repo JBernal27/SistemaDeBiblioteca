@@ -14,7 +14,7 @@ La API te permite hacer las operaciones típicas de una biblioteca:
 
 - **FastAPI**: Framework moderno y rápido para APIs con Python
 - **SQLAlchemy**: ORM robusto para manejo de base de datos
-- **SQL Server**: Base de datos empresarial de Microsoft
+- **PostgreSQL**: Base de datos relacional robusta y escalable
 - **CRUD Completo**: Operaciones Create, Read, Update y Delete
 - **Sistema de Roles**: Control de acceso basado en roles (cliente/admin)
 - **Validación de Datos**: Con Pydantic para esquemas robustos
@@ -64,13 +64,14 @@ SistemaDeBiblioteca/
 
 ### Software Requerido
 - **Python 3.8+**
-- **SQL Server** (Express, Developer o Enterprise)
-- **ODBC Driver 17 for SQL Server**
+- **PostgreSQL 12+**
+- **psycopg2** (driver de PostgreSQL para Python)
 
-### Instalación de ODBC Driver
-1. Descarga el [ODBC Driver 17 for SQL Server](https://docs.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server)
+### Instalación de PostgreSQL
+1. Descarga PostgreSQL desde [postgresql.org](https://www.postgresql.org/download/)
 2. Instala según tu sistema operativo
-3. Verifica la instalación en el Administrador de Orígenes de Datos ODBC
+3. Configura usuario y contraseña durante la instalación
+4. Verifica la instalación ejecutando `psql --version`
 
 ## Instalación
 
@@ -100,8 +101,8 @@ pip install -r requirements.txt #Si no funciona probar con " py -m " o " python 
 Crea un archivo `.env` en la raíz del proyecto:
 
 ```env
-# Configuración de la base de datos SQL Server
-SQL_SERVER_CONNECTION_STRING=mssql+pyodbc://localhost/SistemaDeBiblioteca?driver=ODBC+Driver+17+for+SQL+Server&TrustServerCertificate=yes&Encrypt=yes
+# Configuración de la base de datos PostgreSQL
+DATABASE_URL=postgresql://usuario:contraseña@localhost:5432/SistemaDeBiblioteca
 
 # Configuración del servidor
 HOST=0.0.0.0
@@ -119,15 +120,15 @@ LOG_LEVEL=debug
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 
 # Seguridad
-SECRET_KEY=clave_secreta_para_desarrollo_cambiar_en_produccion
+SECRET_KEY = "secretito123"
+ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES=30
 ```
 
 ### 5. Configurar Base de Datos
-1. Abre SQL Server Management Studio
-2. Conéctate a tu instancia de SQL Server
+1. Abre pgAdmin o conecta via línea de comandos
+2. Conéctate a tu instancia de PostgreSQL
 3. Crea una nueva base de datos llamada `SistemaDeBiblioteca`
-4. **IMPORTANTE**: Marca la casilla "Trust Server Certificate" en la conexión
 
 ```sql
 -- Crear la base de datos
@@ -159,60 +160,104 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 
 Al iniciar la API, automáticamente se ejecuta:
 
-1. **Conexión a SQL Server**
+1. **Conexión a PostgreSQL**
 2. **Creación de tablas** (si no existen)
 3. **Migración de esquemas**
 4. **Inserción de datos de ejemplo**
 
-### Tablas Creadas
+### Esquema de Base de Datos
+
+El sistema utiliza las siguientes tablas según el diagrama ERD:
+
+#### Tabla `roles`
+```sql
+CREATE TABLE roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50) NOT NULL,
+    description VARCHAR(200)
+);
+```
 
 #### Tabla `users`
 ```sql
 CREATE TABLE users (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    email NVARCHAR(100) UNIQUE NOT NULL,
-    full_name NVARCHAR(100),
-    password NVARCHAR(255) NOT NULL,
-    rol NVARCHAR(20) DEFAULT 'cliente' CHECK (rol IN ('cliente', 'admin')),
-    created_at DATETIME2 DEFAULT GETDATE(),
-    is_deleted BIT DEFAULT 0
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(100) UNIQUE NOT NULL,
+    full_name VARCHAR(100),
+    password VARCHAR(255) NOT NULL,
+    role_id UUID NOT NULL REFERENCES roles(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+```
+
+#### Tabla `authors`
+```sql
+CREATE TABLE authors (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    nationality VARCHAR(50),
+    birth_date DATE,
+    death_date DATE,
+    biography TEXT
+);
+```
+
+#### Tabla `material_types`
+```sql
+CREATE TABLE material_types (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50) NOT NULL,
+    description VARCHAR(200)
 );
 ```
 
 #### Tabla `materials`
 ```sql
 CREATE TABLE materials (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    title NVARCHAR(200) NOT NULL,
-    author NVARCHAR(100) NOT NULL,
-    type NVARCHAR(50) NOT NULL,
-    is_deleted BIT DEFAULT 0,
-    date_added DATETIME2 DEFAULT GETDATE()
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(200) NOT NULL,
+    author_id UUID NOT NULL REFERENCES authors(id),
+    type_id UUID NOT NULL REFERENCES material_types(id),
+    is_deleted BOOLEAN DEFAULT FALSE,
+    date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### Tabla `loan_status`
+```sql
+CREATE TABLE loan_status (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50) NOT NULL
 );
 ```
 
 #### Tabla `loans`
 ```sql
 CREATE TABLE loans (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    material_id INT NOT NULL,
-    user_id INT NOT NULL,
-    loan_date DATETIME2 DEFAULT GETDATE(),
-    expected_return_date DATETIME2 NOT NULL,
-    actual_return_date DATETIME2,
-    is_returned BIT DEFAULT 0,
-    FOREIGN KEY (material_id) REFERENCES materials(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    material_id UUID NOT NULL REFERENCES materials(id),
+    user_id UUID NOT NULL REFERENCES users(id),
+    loan_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expected_return_date TIMESTAMP NOT NULL,
+    actual_return_date TIMESTAMP,
+    status_id UUID NOT NULL REFERENCES loan_status(id),
+    created_by UUID,
+    updated_by UUID,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
 ### Datos de Ejemplo Insertados
 
 #### Usuarios
-- **admin** - `admin@ejemplo.com` / contraseña: `password` / **Rol: Admin**
-- **usuario1** - `usuario1@ejemplo.com` / contraseña: `password` / **Rol: Cliente**
-- **maria_garcia** - `maria@ejemplo.com` / contraseña: `password` / **Rol: Cliente**
-- **bibliotecario** - `biblio@ejemplo.com` / contraseña: `password` / **Rol: Admin**
+- **Administrador** - `admin@ejemplo.com` / contraseña: `admin123` / **Rol: Admin**
+- **Juan Pérez** - `usuario1@ejemplo.com` / contraseña: `user123` / **Rol: Cliente**
+
 
 #### Materiales
 - **El Principito** - Antoine de Saint-Exupéry (Libro)
@@ -381,24 +426,24 @@ curl "http://localhost:8000/loans/my"
 
 ## Solución de Problemas
 
-### Error: "Login failed for user"
-1. Verifica que SQL Server esté ejecutándose
-2. Confirma que el string de conexión sea correcto
-3. Asegúrate de que el usuario tenga permisos
-4. Verifica que el ODBC Driver esté instalado
+### Error: "Connection refused"
+1. Verifica que PostgreSQL esté ejecutándose
+2. Confirma que el puerto 5432 esté disponible
+3. Verifica que el usuario y contraseña sean correctos
+4. Asegúrate de que la base de datos exista
 
-### Error: "Cannot open database"
-1. Crea la base de datos `SistemaDeBiblioteca` en SQL Server
+### Error: "Database does not exist"
+1. Crea la base de datos `sistema_biblioteca` en PostgreSQL
 2. Verifica que el nombre de la base de datos sea correcto
 3. Asegúrate de que el usuario tenga acceso a la base de datos
 
-### Error: "Trust Server Certificate"
-1. Marca la casilla "Trust Server Certificate" en SSMS
-2. Agrega `TrustServerCertificate=yes` en tu string de conexión
-3. O usa `Encrypt=no` para desarrollo local
+### Error: "psycopg2 not found"
+1. Instala psycopg2: `pip install psycopg2-binary`
+2. Si hay problemas, usa: `pip install psycopg2`
+3. En Windows, considera usar conda: `conda install psycopg2`
 
-### Error: "MSSQL requires an order_by when using OFFSET"
-1. Este error ya está solucionado en el código
+### Error: "PostgreSQL syntax error"
+1. Verifica que estés usando la sintaxis correcta de PostgreSQL
 2. Las queries incluyen `ORDER BY` automáticamente
 3. Si persiste, verifica que estés usando la versión actualizada
 
@@ -453,7 +498,7 @@ curl "http://localhost:8000/materials?type=book"
 ### Variables de Entorno de Producción
 ```env
 # Configuración de producción
-SQL_SERVER_CONNECTION_STRING=mssql+pyodbc://usuario:contraseña@servidor-produccion/base_de_datos?driver=ODBC+Driver+17+for+SQL+Server&TrustServerCertificate=yes
+DATABASE_URL=postgresql://usuario:contraseña@servidor-produccion:5432/sistema_biblioteca
 HOST=0.0.0.0
 PORT=8000
 WORKERS=4
@@ -470,8 +515,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info
 
 - [Documentación de FastAPI](https://fastapi.tiangolo.com/)
 - [Documentación de SQLAlchemy](https://docs.sqlalchemy.org/)
-- [Documentación de SQL Server](https://docs.microsoft.com/en-us/sql/)
-- [Guía de ODBC Driver](https://docs.microsoft.com/en-us/sql/connect/odbc/)
+- [Documentación de PostgreSQL](https://www.postgresql.org/docs/)
+- [Guía de psycopg2](https://www.psycopg.org/docs/)
 - [FastAPI Lifespan Events](https://fastapi.tiangolo.com/advanced/events/)
 
 ## Autores del Proyecto
@@ -489,5 +534,5 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info
 ---
 
 **Proyecto desarrollado para:** Parcial 1 - Aplicaciones y Servicios Web  
-**Herramientas utilizadas:** FastAPI, Uvicorn, Postman, GitHub, SQLAlchemy y SQL Server
+**Herramientas utilizadas:** FastAPI, Uvicorn, Postman, GitHub, SQLAlchemy y PostgreSQL
 
