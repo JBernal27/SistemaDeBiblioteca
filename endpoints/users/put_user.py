@@ -27,7 +27,7 @@ async def update_user(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
             )
         
-        if current_user.rol != "admin" and current_user.id != user_id:
+        if current_user.role_name != "admin" and current_user.id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes permiso para actualizar este usuario",
@@ -36,7 +36,7 @@ async def update_user(
         update_data = user_update.model_dump(exclude_unset=True)
         update_data["updated_by"] = str(current_user.id)
 
-        if "rol" in update_data and current_user.rol != "admin":
+        if "role_name" in update_data and current_user.role_name != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Solo los administradores pueden cambiar roles de usuario"
