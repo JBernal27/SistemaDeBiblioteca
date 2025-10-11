@@ -64,7 +64,7 @@ def get_user_loans(
         HTTPException(500) - Error interno del servidor
     """
     try:
-        if current_user.rol != "admin" or current_user.id != user_id:
+        if current_user.role_name != "admin" or current_user.id != user_id:
             raise HTTPException(
                 status_code=403,
                 detail="No tienes permiso para acceder a los préstamos de este usuario",
@@ -100,7 +100,7 @@ def get_loan(
         if not loan:
             raise HTTPException(status_code=404, detail="Préstamo no encontrado")
 
-        if current_user.rol != RolEnum.admin and str(current_user.id) != loan.user_id:
+        if current_user.role_name != RolEnum.admin and str(current_user.id) != loan.user_id:
             raise HTTPException(
                 status_code=403,
                 detail="No tienes permiso para acceder a este préstamo",

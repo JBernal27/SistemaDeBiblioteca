@@ -39,13 +39,21 @@ async def create_user(user: RegisterDTO, db: Session = Depends(get_db)):
 
         hashed_password = pwd_context.hash(user.password)
 
+        # Crear el usuario sin el campo created_by
         db_user = UserDB(
             email=user.email,
             full_name=user.full_name,
             password=hashed_password,
             role_id=client_role.id,
-            is_deleted=False,
+            is_deleted=False
         )
+
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+
+        db_user.created_by = db_user.id
+        db.commit()
 
         db.add(db_user)
         db.commit()
