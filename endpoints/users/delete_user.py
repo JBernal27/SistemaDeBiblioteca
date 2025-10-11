@@ -44,7 +44,7 @@ async def delete_user(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
             )
 
-        if current_user.rol != "admin" and current_user.id != user_id:
+        if current_user.role_name != "admin" and current_user.id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes permiso para eliminar este usuario",
