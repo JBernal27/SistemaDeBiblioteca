@@ -56,9 +56,12 @@ async def get_material(material_id: UUID, db: Session = Depends(get_db)):
 async def get_all_materials(
     db: Session = Depends(get_db),
     type_id: Optional[UUID] = Query(None, description="ID del tipo de material"),
-    availability_id: Optional[UUID] = Query(
+    loan_status_id: Optional[UUID] = Query(
+        None, description="Filtra por ID del estado del préstamo específico"
+    ),
+    availability: Optional[bool] = Query(
         None,
-        description="ID del estado del préstamo (por ejemplo: disponible / prestado)",
+        description="Filtra por disponibilidad (true = disponible, false = prestado)",
     ),
     query: Optional[str] = Query(
         None, description="Texto parcial para buscar en título o autor"
@@ -67,8 +70,9 @@ async def get_all_materials(
     """
     Obtiene la lista de materiales con filtros opcionales:
     - type_id: Filtra por tipo de material
-    - availability_id: Filtra por disponibilidad según el estado del préstamo
-    - query: Búsqueda parcial en título o autor (case-insensitive)
+    - loan_status_id: Filtra por estado de préstamo específico
+    - availability: True = disponibles, False = prestados
+    - query: Búsqueda parcial en título o autor
     """
     try:
         stmt = (
@@ -83,6 +87,7 @@ async def get_all_materials(
 
         # 🔹 Filtro por texto parcial (título o autor)
         if query:
+            print("query filter applied:", query)
             stmt = stmt.where(
                 or_(
                     func.lower(MaterialDB.title).like(f"%{query.lower()}%"),
@@ -90,31 +95,31 @@ async def get_all_materials(
                 )
             )
 
-        # 🔹 Filtro por disponibilidad
-        if availability_id:
-            # Subconsulta: préstamos activos (no devueltos)
+        # 🔹 Filtro por estado del préstamo (loan_status_id)
+        if loan_status_id:
+            stmt = stmt.join(LoanDB, LoanDB.material_id == MaterialDB.id)
+            stmt = stmt.join(LoanStatusDB, LoanStatusDB.id == LoanDB.status_id)
+            stmt = stmt.where(LoanStatusDB.id == loan_status_id)
+
+        # 🔹 Filtro por disponibilidad (availability)
+        elif availability is not None:
             active_loans = (
                 select(LoanDB.id)
-                .join(LoanStatusDB)
+                .join(LoanStatusDB, LoanStatusDB.id == LoanDB.status_id)
                 .where(
                     LoanDB.material_id == MaterialDB.id,
-                    LoanStatusDB.id == availability_id,
                     LoanDB.actual_return_date.is_(None),
                 )
             )
 
-            # Si el estado buscado es “disponible” → materiales que NO tienen préstamo activo
-            # Si el estado buscado es “prestado” → materiales que SÍ tienen préstamo activo
-            borrowed_status = (
-                db.query(LoanStatusDB).filter(LoanStatusDB.name == "Borrowed").first()
-            )
-
-            if borrowed_status and availability_id == borrowed_status.id:
-                stmt = stmt.where(exists(active_loans))
-            else:
+            if availability:
+                # materiales disponibles: sin préstamo activo
                 stmt = stmt.where(not_(exists(active_loans)))
+            else:
+                # materiales no disponibles: con préstamo activo
+                stmt = stmt.where(exists(active_loans))
 
-        # 🔹 Ejecutar la consulta
+        # 🔹 Ejecutar consulta
         result = db.execute(stmt).scalars().all()
 
         return [Material.model_validate(m, from_attributes=True) for m in result]
