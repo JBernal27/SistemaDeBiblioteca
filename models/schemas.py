@@ -69,14 +69,29 @@ class AuthorUpdate(BaseModel):
     updated_by: Optional[UUID] = None
 
 
+# 🔹 Nuevo schema base de Material (sin relaciones) para evitar recursión
+class MaterialMini(BaseModel):
+    id: UUID
+    title: str
+    img: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
 class Author(AuthorBase):
     id: UUID
     created_by: Optional[UUID] = None
     updated_by: Optional[UUID] = None
     updated_at: datetime
 
+    # 👇 Esta es la parte clave:
+    materials: list[MaterialMini] = []
+
     class Config:
         from_attributes = True
+
 
 
 # -----------------------------
@@ -188,7 +203,6 @@ class UserResponse(BaseModel):
 # Material Model and DTOs
 # -----------------------------
 
-
 class MaterialBase(BaseModel):
     title: str = Field(..., max_length=200, description="Título del material")
     author_id: UUID = Field(..., description="ID del autor del material")
@@ -203,15 +217,23 @@ class MaterialCreate(MaterialBase):
 
 
 class MaterialUpdate(BaseModel):
-    title: Optional[str] = Field(
-        None, max_length=200, description="Título del material"
-    )
+    title: Optional[str] = Field(None, max_length=200, description="Título del material")
     author_id: Optional[UUID] = Field(None, description="ID del autor del material")
     type_id: Optional[UUID] = Field(None, description="ID del tipo de material")
     img: Optional[str] = Field(
         None, max_length=255, description="URL de la imagen del material (opcional)"
     )
     updated_by: Optional[UUID] = None
+
+
+# 🔹 Versión ligera del autor para usar dentro del material
+class AuthorMini(BaseModel):
+    id: UUID
+    name: str
+    nationality: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 class Material(MaterialBase):
@@ -223,19 +245,12 @@ class Material(MaterialBase):
     updated_at: datetime
 
     # Relaciones
-    author: Optional[Author] = None
+    author: Optional[AuthorMini] = None  # 👈 versión mini del autor
     material_type: Optional[MaterialType] = None
 
     class Config:
         from_attributes = True
 
-
-class MaterialResponse(BaseModel):
-    """Respuesta estándar de la API para materiales"""
-
-    message: str
-    material: Optional[Material] = None
-    error: Optional[str] = None
 
 
 # -----------------------------
