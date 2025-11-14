@@ -347,3 +347,16 @@ class RegisterResponse(BaseModel):
     user: Optional[User] = None
     error: Optional[str] = None
     token: Optional[str] = None
+
+
+# -----------------------------
+# Schemas para gráficos / estadísticas
+# -----------------------------
+class LoansByDate(BaseModel):
+    date: date
+    count: int
+
+
+class MaterialTypeBorrowed(BaseModel):
+    material_type: str
+    count: int

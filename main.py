@@ -30,6 +30,8 @@ from endpoints import (
     post_loan_status_router,
     put_loan_status_router,
     delete_loan_status_router,
+    get_loans_by_date_router,
+    get_material_types_borrowed_router,
 )
 
 """
@@ -103,6 +105,10 @@ app.include_router(get_loan_status_router)
 app.include_router(post_loan_status_router)
 app.include_router(put_loan_status_router)
 app.include_router(delete_loan_status_router)
+
+# Routers de gráficos / estadísticas
+app.include_router(get_loans_by_date_router)
+app.include_router(get_material_types_borrowed_router)
 
 
 @app.on_event("startup")
