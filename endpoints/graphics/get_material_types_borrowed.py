@@ -32,18 +32,19 @@ def material_types_borrowed(
         results = (
             db.query(
                 MaterialTypeDB.name.label("material_type"),
+                MaterialTypeDB.description.label("description"),
                 func.count(LoanDB.id).label("count"),
             )
             .join(MaterialDB, MaterialDB.type_id == MaterialTypeDB.id)
             .join(LoanDB, LoanDB.material_id == MaterialDB.id)
             .filter(LoanDB.loan_date >= start_date)
-            .group_by(MaterialTypeDB.name)
+            .group_by(MaterialTypeDB.id, MaterialTypeDB.name, MaterialTypeDB.description)
             .order_by(func.count(LoanDB.id).desc())
             .all()
         )
 
         return [
-            MaterialTypeBorrowed(material_type=r[0], count=int(r[1])) for r in results
+            MaterialTypeBorrowed(material_type=r[0], description=r[1], count=int(r[2]))
             for r in results
         ]
     except Exception as e:

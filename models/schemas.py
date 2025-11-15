@@ -359,4 +359,5 @@ class LoansByDate(BaseModel):
 
 class MaterialTypeBorrowed(BaseModel):
     material_type: str
+    description: str | None = None
     count: int
