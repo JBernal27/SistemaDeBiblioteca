@@ -1,14 +1,13 @@
-# endpoints/loans/put_loan.py
-
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from database.connection import get_db
-from models.schemas import LoanUpdate, LoanResponse, TokenData
-from database.connection import Loan as LoanDB
-from datetime import datetime, timezone
 from sqlalchemy import select
 from uuid import UUID
+from datetime import datetime, timezone
+
+from database.connection import get_db
+from database.connection import Loan as LoanDB, LoanStatus as LoanStatusDB
+from models.schemas import LoanResponse, TokenData
 from common.middleware import require_admin
 
 router = APIRouter(prefix="/loans", tags=["loans"])
@@ -21,45 +20,35 @@ async def return_loan(
     db: Session = Depends(get_db),
 ):
     """
-    Registra la devolución de un préstamo. Solo accesible para administradores.
-
-    Args:
-        loan_id: UUID - Identificador único del préstamo a devolver
-        current_user: TokenData - Token del administrador
-        db: Session - Sesión de la base de datos
-
-    Returns:
-        LoanResponse - Detalles actualizados del préstamo
-
-    Raises:
-        HTTPException(400) - Préstamo ya devuelto
-        HTTPException(404) - Préstamo no encontrado
-        HTTPException(500) - Error interno del servidor
+    Marca un préstamo como devuelto (actualiza status_id y actual_return_date).
     """
     try:
         stmt = select(LoanDB).where(LoanDB.id == loan_id)
         db_loan = db.execute(stmt).scalar_one_or_none()
 
         if not db_loan:
+            raise HTTPException(status_code=404, detail="Préstamo no encontrado")
+
+        if db_loan.actual_return_date is not None:
+            raise HTTPException(status_code=400, detail="El préstamo ya fue devuelto")
+
+        # 🔹 Obtener el estado "returned"
+        returned_status = db.execute(
+            select(LoanStatusDB).where(LoanStatusDB.name.ilike("returned"))
+        ).scalar_one_or_none()
+
+        if not returned_status:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Préstamo no encontrado"
+                status_code=500,
+                detail="No se encontró el estado 'returned' en la base de datos",
             )
 
-        if bool(db_loan.is_returned):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El préstamo ya fue devuelto",
-            )
-
-        update_data = {
-            "updated_by": str(current_user.id),
-            "is_returned": True,
-            "actual_return_date": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-        }
-
-        for key, value in update_data.items():
-            setattr(db_loan, key, value)
+        # 🔹 Actualizar los campos
+        now_utc = datetime.now(timezone.utc)
+        db_loan.actual_return_date = now_utc
+        db_loan.status_id = returned_status.id
+        db_loan.updated_by = current_user.id
+        db_loan.updated_at = now_utc
 
         db.commit()
         db.refresh(db_loan)
@@ -71,13 +60,65 @@ async def return_loan(
         raise
     except IntegrityError:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Error de integridad en la base de datos",
-        )
+        raise HTTPException(status_code=400, detail="Error de integridad en la base de datos")
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno del servidor: {str(e)}",
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+
+
+@router.put("/{loan_id}/overdue", response_model=LoanResponse)
+async def mark_loan_as_overdue(
+    loan_id: UUID,
+    current_user: TokenData = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Marca un préstamo como vencido (Overdue) si ya pasó su fecha esperada de devolución.
+    """
+    try:
+        stmt = select(LoanDB).where(LoanDB.id == loan_id)
+        loan = db.execute(stmt).scalar_one_or_none()
+
+        if not loan:
+            raise HTTPException(status_code=404, detail="Loan not found")
+
+        if loan.actual_return_date:
+            raise HTTPException(status_code=400, detail="This loan has already been returned")
+
+        now_utc = datetime.now(timezone.utc)
+
+        # 👇 Asegura que expected_return_date tenga zona horaria antes de comparar
+        expected_return_date = (
+            loan.expected_return_date.replace(tzinfo=timezone.utc)
+            if loan.expected_return_date.tzinfo is None
+            else loan.expected_return_date
         )
+
+        if expected_return_date >= now_utc:
+            raise HTTPException(status_code=400, detail="This loan is not overdue yet")
+
+        overdue_status = db.execute(
+            select(LoanStatusDB).where(LoanStatusDB.name.ilike("overdue"))
+        ).scalar_one_or_none()
+
+        if not overdue_status:
+            raise HTTPException(status_code=404, detail="Loan status 'Overdue' not found")
+
+        loan.status_id = overdue_status.id
+        loan.updated_by = current_user.id
+        loan.updated_at = now_utc
+
+        db.commit()
+        db.refresh(loan)
+
+        return LoanResponse.model_validate(loan, from_attributes=True)
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Error de integridad en la base de datos")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
