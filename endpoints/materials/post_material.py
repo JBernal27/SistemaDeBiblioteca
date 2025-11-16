@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from models.schemas import Material, MaterialCreate, TokenData
-from common import MaterialType
 from sqlalchemy.orm import Session
-from database.connection import get_db, Material as MaterialDB
-from sqlalchemy import select
+from database.connection import get_db, Material as MaterialDB, MaterialType as MaterialTypeDB
 from sqlalchemy.exc import IntegrityError
 from common.middleware import require_admin
+from uuid import uuid4
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
@@ -34,46 +34,46 @@ async def create_material(
         HTTPException(500) - Error interno del servidor
     """
     try:
-        valid_types = [t.value for t in MaterialType]
-        if material.type.value not in valid_types:
+        # Verificar si el tipo de material existe
+        material_type = db.query(MaterialTypeDB).filter(MaterialTypeDB.id == material.type_id).first()
+        if not material_type:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Tipo inválido. Debe ser uno de: {valid_types}",
+                detail="El tipo de material especificado no existe.",
             )
 
+        # Verificar si ya existe un material con el mismo título
         exists = (
             db.query(MaterialDB)
-            .filter(
-                MaterialDB.title == material.title, MaterialDB.is_deleted == False
-            )
+            .filter(MaterialDB.title == material.title, MaterialDB.is_deleted == False)
             .first()
             is not None
         )
 
         if exists:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="El material ya existe"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe un material con este título.",
             )
 
+        # Crear el nuevo material
         db_material = MaterialDB(
-            title=material.title, author=material.author, type=material.type.value
+            id=uuid4(),
+            title=material.title,
+            author_id=material.author_id,
+            type_id=material.type_id,
+            img=material.img,
+            created_by=current_user.id,
+            updated_by=current_user.id,
+            date_added=datetime.now(timezone.utc),
         )
 
         db.add(db_material)
-        db.flush()
-
-        setattr(
-            db_material, "created_by", str(current_user.id)
-        )
-        setattr(
-            db_material, "updated_by", str(current_user.id)
-        )
-
         db.commit()
         db.refresh(db_material)
 
+        # Convertir a modelo Pydantic
         created_material = Material.model_validate(db_material, from_attributes=True)
-
         return created_material
 
     except HTTPException:
@@ -83,7 +83,7 @@ async def create_material(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Error de integridad en la base de datos",
+            detail="Error de integridad en la base de datos (verifique los IDs referenciados).",
         )
     except Exception as e:
         db.rollback()

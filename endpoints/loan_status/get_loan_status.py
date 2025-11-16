@@ -11,7 +11,6 @@ router = APIRouter(prefix="/loan-status", tags=["loan-status"])
 
 @router.get("/", response_model=List[LoanStatus], status_code=status.HTTP_200_OK)
 async def get_loan_status(
-    _: TokenData = Depends(require_admin),
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db),
