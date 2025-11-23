@@ -38,6 +38,8 @@ async def get_material(material_id: UUID, db: Session = Depends(get_db)):
 
         return Material.model_validate(material, from_attributes=True)
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
