@@ -26,3 +26,40 @@ def author_update_payload():
         nationality="Colombiano",
         biography="Premio Nobel de Literatura Updated"
     )
+
+@pytest.fixture
+def loan_status_create_payload():
+    from models.schemas import LoanStatusCreate
+    return LoanStatusCreate(name="Prestado")
+
+@pytest.fixture
+def loan_status_update_payload():
+    from models.schemas import LoanStatusUpdate  
+    return LoanStatusUpdate(name="Devuelto")
+
+@pytest.fixture
+def loan_create_payload():
+    from models.schemas import LoanCreate
+    from uuid import uuid4
+    from datetime import date
+    return LoanCreate(
+        material_id=uuid4(),
+        user_id=uuid4(),
+        expected_return_date=date.today()
+    )
+
+@pytest.fixture
+def material_type_create_payload():
+    from models.schemas import MaterialTypeCreate
+    return MaterialTypeCreate(
+        name="Libro",
+        description="Material de lectura"
+    )
+
+@pytest.fixture
+def material_type_update_payload():
+    from models.schemas import MaterialTypeUpdate  
+    return MaterialTypeUpdate(
+        name="Revista",
+        description="Publicación periódica"
+    )
