@@ -64,7 +64,8 @@ def get_user_loans(
         HTTPException(500) - Error interno del servidor
     """
     try:
-        if current_user.role_name != "admin" or current_user.id != user_id:
+        # Permitir a admins ver préstamos de cualquier usuario, y a los usuarios ver los suyos
+        if current_user.role_name != "admin" and current_user.id != user_id:
             raise HTTPException(
                 status_code=403,
                 detail="No tienes permiso para acceder a los préstamos de este usuario",
@@ -78,6 +79,8 @@ def get_user_loans(
         return [
             LoanResponse.model_validate(loan, from_attributes=True) for loan in loans_db
         ]
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error al obtener préstamos del usuario: {str(e)}"
