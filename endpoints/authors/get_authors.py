@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Query, Depends
 from typing import List
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
 from models.schemas import Author, TokenData
-from database.connection import Author as AuthorDB, get_db
+from database.connection import Author as AuthorDB, Material as MaterialDB, get_db
 from common.middleware import require_admin
 
 router = APIRouter(prefix="/authors", tags=["authors"])
@@ -17,31 +17,19 @@ async def get_authors(
     db: Session = Depends(get_db),
 ):
     """
-    Obtiene una lista paginada de todos los autores del sistema.
+    Obtiene una lista paginada de autores con sus materiales asociados.
     Solo accesible para administradores.
-
-    Args:
-        _: TokenData - Token del administrador 
-        skip: int - Número de registros a saltar (para paginación)
-        limit: int - Número máximo de registros a retornar (10-100)
-        db: Session - Sesión de la base de datos 
-
-    Returns:
-        List[Author] - Lista de autores del sistema
-
-    Raises:
-        HTTPException(403) - Usuario no autorizado
-        HTTPException(500) - Error interno del servidor
     """
     try:
         stmt = (
             select(AuthorDB)
+            .options(joinedload(AuthorDB.materials))
             .order_by(AuthorDB.name)
             .offset(skip)
             .limit(limit)
         )
         result = db.execute(stmt)
-        authors_db = result.scalars().all()
+        authors_db = result.scalars().unique().all()
 
         authors = [Author.model_validate(a, from_attributes=True) for a in authors_db]
 
@@ -58,29 +46,19 @@ async def get_authors(
 async def get_author(
     author_id: str,
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(require_admin),
 ):
     """
-    Obtiene los detalles de un autor específico.
+    Obtiene los detalles de un autor junto con sus materiales asociados.
     Solo accesible para administradores.
-
-    Args:
-        author_id: str - Identificador único del autor
-        db: Session - Sesión de la base de datos 
-        current_user: TokenData - Token del administrador 
-
-    Returns:
-        Author - Detalles del autor solicitado
-
-    Raises:
-        HTTPException(403) - Usuario no autorizado
-        HTTPException(404) - Autor no encontrado
-        HTTPException(500) - Error interno del servidor
     """
     try:
-        stmt = select(AuthorDB).where(AuthorDB.id == author_id)
+        stmt = (
+            select(AuthorDB)
+            .where(AuthorDB.id == author_id)
+            .options(joinedload(AuthorDB.materials))
+        )
         result = db.execute(stmt)
-        author_db = result.scalar_one_or_none()
+        author_db = result.scalars().unique().one_or_none()
 
         if not author_db:
             raise HTTPException(

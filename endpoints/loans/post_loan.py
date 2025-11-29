@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from database.connection import get_db
 from models.schemas import LoanCreate, LoanResponse, TokenData
-from database.connection import Loan as LoanDB, Material as MaterialDB, User as UserDB
-from sqlalchemy import select
+from database.connection import Loan as LoanDB, Material as MaterialDB, User as UserDB, LoanStatus as LoanStatusDB
+from sqlalchemy import select, and_
 from uuid import UUID
 from common.middleware import require_admin
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/loans", tags=["loans"])
 
@@ -18,29 +19,17 @@ async def create_loan(
     db: Session = Depends(get_db),
 ):
     """
-    Crea un nuevo préstamo en el sistema. Solo accesible para administradores.
-
-    Args:
-        loan: LoanCreate - Datos del préstamo a crear
-        current_user: TokenData - Token del administrador
-        db: Session - Sesión de la base de datos
-
-    Returns:
-        LoanResponse - Detalles del préstamo creado
-
-    Raises:
-        HTTPException(400) - Error de validación o material ya prestado
-        HTTPException(404) - Material o usuario no encontrado
-        HTTPException(500) - Error interno del servidor
+    Crea un nuevo préstamo (solo si el material no está prestado actualmente).
     """
+
     try:
+        # 🔹 Verificar material
         stmt_material = select(MaterialDB).where(MaterialDB.id == loan.material_id)
         db_material = db.execute(stmt_material).scalar_one_or_none()
         if not db_material:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="El material no existe"
-            )
+            raise HTTPException(status_code=404, detail="El material no existe")
 
+        # 🔹 Verificar usuario
         stmt_user = select(UserDB).where(UserDB.id == loan.user_id)
         db_user = db.execute(stmt_user).scalar_one_or_none()
         if not db_user:
@@ -61,20 +50,32 @@ async def create_loan(
             existing_loan = db.execute(None).scalar_one_or_none()
         if existing_loan:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El material ya está prestado",
+                status_code=400,
+                detail="El material ya está prestado actualmente",
             )
 
+        # 🔹 Buscar el estado "borrowed" para asignarlo al nuevo préstamo
+        borrowed_status = db.execute(
+            select(LoanStatusDB).where(LoanStatusDB.name == "borrowed")
+        ).scalar_one_or_none()
+
+        if not borrowed_status:
+            raise HTTPException(
+                status_code=500,
+                detail="No se encontró el estado 'borrowed' en la base de datos",
+            )
+
+        # 🔹 Crear el préstamo
         db_loan = LoanDB(
             material_id=loan.material_id,
             user_id=loan.user_id,
             expected_return_date=loan.expected_return_date,
+            status_id=borrowed_status.id,
             created_by=current_user.id,
             updated_by=current_user.id,
         )
 
         db.add(db_loan)
-        db.flush()
         db.commit()
         db.refresh(db_loan)
 
@@ -85,13 +86,7 @@ async def create_loan(
         raise
     except IntegrityError:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Error de integridad en la base de datos",
-        )
+        raise HTTPException(status_code=400, detail="Error de integridad en la base de datos")
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno del servidor: {str(e)}",
-        )
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")

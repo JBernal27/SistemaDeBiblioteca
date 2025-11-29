@@ -122,8 +122,11 @@ class Material(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     title = Column(String(200), nullable=False)
     author_id = Column(UUID(as_uuid=True), ForeignKey("authors.id"), nullable=False)
-    type_id = Column(UUID(as_uuid=True), ForeignKey("material_types.id"), nullable=False)
+    type_id = Column(
+        UUID(as_uuid=True), ForeignKey("material_types.id"), nullable=False
+    )
     is_deleted = Column(Boolean, default=False)
+    img = Column(String(255), nullable=True)
     date_added = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(UUID(as_uuid=True), nullable=True)
     updated_by = Column(UUID(as_uuid=True), nullable=True)
@@ -198,19 +201,14 @@ def migrate_database():
 
     # Configurar el hash de contraseñas
     from passlib.context import CryptContext
+
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    
+
     with SessionLocal() as db:
         # Crear roles si no existen
         if db.query(Role).count() == 0:
-            admin_role = Role(
-                name="admin",
-                description="Administrador del sistema"
-            )
-            client_role = Role(
-                name="cliente",
-                description="Cliente de la biblioteca"
-            )
+            admin_role = Role(name="admin", description="Administrador del sistema")
+            client_role = Role(name="cliente", description="Cliente de la biblioteca")
             db.add_all([admin_role, client_role])
             db.commit()
             print("👥 Roles de ejemplo insertados.")
@@ -252,36 +250,29 @@ def migrate_database():
             author1 = Author(
                 name="Antoine de Saint-Exupéry",
                 nationality="Francés",
-                birth_date="1900-06-29"
+                birth_date="1900-06-29",
             )
             author2 = Author(
                 name="Miguel de Cervantes",
                 nationality="Español",
                 birth_date="1547-09-29",
-                death_date="1616-04-22"
+                death_date="1616-04-22",
             )
             db.add_all([author1, author2])
             db.commit()
             print("✍️ Autores de ejemplo insertados.")
         else:
-            author1 = db.query(Author).filter_by(name="Antoine de Saint-Exupéry").first()
+            author1 = (
+                db.query(Author).filter_by(name="Antoine de Saint-Exupéry").first()
+            )
             author2 = db.query(Author).filter_by(name="Miguel de Cervantes").first()
             print("⚠️ Ya existen autores, no se insertaron de nuevo.")
 
         # Crear tipos de material si no existen
         if db.query(MaterialType).count() == 0:
-            book_type = MaterialType(
-                name="book",
-                description="Libro"
-            )
-            magazine_type = MaterialType(
-                name="magazine",
-                description="Revista"
-            )
-            newspaper_type = MaterialType(
-                name="newspaper",
-                description="Periódico"
-            )
+            book_type = MaterialType(name="book", description="Libro")
+            magazine_type = MaterialType(name="magazine", description="Revista")
+            newspaper_type = MaterialType(name="newspaper", description="Periódico")
             db.add_all([book_type, magazine_type, newspaper_type])
             db.commit()
             print("📖 Tipos de material de ejemplo insertados.")
@@ -297,6 +288,7 @@ def migrate_database():
                 title="El Principito",
                 author_id=author1.id,
                 type_id=book_type.id,
+                img="https://laplumadeluder.com/wp-content/uploads/2018/12/Portada_El_Principito.jpg",
                 created_by=admin_id,
                 updated_by=admin_id,
             )
@@ -304,6 +296,7 @@ def migrate_database():
                 title="Don Quijote",
                 author_id=author2.id,
                 type_id=book_type.id,
+                img="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrckP5QO40_Rciz-hcLiIHnl3NcpEqdANYvg&s",
                 created_by=admin_id,
                 updated_by=admin_id,
             )
