@@ -32,7 +32,6 @@ async def test_get_material_types_success(
     mock_db_session.execute.return_value = mock_result
 
     result = await get_material_types(
-        _=mock_token_data,
         skip=0,
         limit=10,
         db=mock_db_session
@@ -55,7 +54,6 @@ async def test_get_material_types_empty(
     mock_db_session.execute.return_value = mock_result
 
     result = await get_material_types(
-        _=mock_token_data,
         skip=0,
         limit=10,
         db=mock_db_session
@@ -75,7 +73,6 @@ async def test_get_material_types_internal_error(
 
     with pytest.raises(HTTPException) as exc_info:
         await get_material_types(
-            _=mock_token_data,
             skip=0,
             limit=10,
             db=mock_db_session
