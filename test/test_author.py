@@ -31,12 +31,17 @@ async def test_get_authors_success(
         mock_author_pydantic_2
     ]
     
+    mock_scalars = Mock()
+    mock_unique = Mock()
+    mock_unique.all.return_value = authors_db
+    mock_scalars.unique.return_value = mock_unique
+    
     mock_result = Mock()
-    mock_result.scalars.return_value.all.return_value = authors_db
+    mock_result.scalars.return_value = mock_scalars
     mock_db_session.execute.return_value = mock_result
 
     result = await get_authors(
-        _=mock_token_data, # Corregido
+        _=mock_token_data,
         skip=10,
         limit=50,
         db=mock_db_session
@@ -53,12 +58,17 @@ async def test_get_authors_empty(
 ):
     """Verifica la obtención exitosa de una lista vacía de autores."""
     
+    mock_scalars = Mock()
+    mock_unique = Mock()
+    mock_unique.all.return_value = []
+    mock_scalars.unique.return_value = mock_unique
+    
     mock_result = Mock()
-    mock_result.scalars.return_value.all.return_value = []
+    mock_result.scalars.return_value = mock_scalars
     mock_db_session.execute.return_value = mock_result
 
     result = await get_authors(
-        _=mock_token_data, # Corregido
+        _=mock_token_data,
         skip=0,
         limit=10,
         db=mock_db_session
@@ -103,8 +113,13 @@ async def test_get_author_success(
     
     MockAuthorPydantic.model_validate.return_value = mock_author_pydantic
     
+    mock_scalars = Mock()
+    mock_unique = Mock()
+    mock_unique.one_or_none.return_value = mock_author_db
+    mock_scalars.unique.return_value = mock_unique
+    
     mock_result = Mock()
-    mock_result.scalar_one_or_none.return_value = mock_author_db
+    mock_result.scalars.return_value = mock_scalars
     mock_db_session.execute.return_value = mock_result
 
     result = await get_author(
@@ -122,8 +137,13 @@ async def test_get_author_not_found(
     
     author_id = uuid4()
     
+    mock_scalars = Mock()
+    mock_unique = Mock()
+    mock_unique.one_or_none.return_value = None
+    mock_scalars.unique.return_value = mock_unique
+    
     mock_result = Mock()
-    mock_result.scalar_one_or_none.return_value = None
+    mock_result.scalars.return_value = mock_scalars
     mock_db_session.execute.return_value = mock_result
 
     with pytest.raises(HTTPException) as exc_info:

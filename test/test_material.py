@@ -46,23 +46,49 @@ def material_data():
 # --- Tests ---
 
 def test_create_material_success(mock_client, mock_db_session, material_data):
-    # Mock query to return None (material does not exist)
-    mock_db_session.query.return_value.filter.return_value.first.return_value = None
+    # Create a mock for MaterialTypeDB that will be returned
+    mock_material_type = MagicMock()
+    mock_material_type.id = material_data["type_id"]
+    
+    # Configure query chain for first call (MaterialTypeDB check)
+    first_query = MagicMock()
+    first_filter = MagicMock()
+    first_filter.first.return_value = mock_material_type
+    first_query.filter.return_value = first_filter
+    
+    # Configure query chain for second call (MaterialDB duplicate check)
+    second_query = MagicMock()
+    second_filter = MagicMock()
+    second_filter.first.return_value = None  # No existing material
+    second_query.filter.return_value = second_filter
+    
+    # Make query() return different mocks for each call
+    mock_db_session.query.side_effect = [first_query, second_query]
+    
+    # Mock add, commit, refresh to complete the operation
+    mock_db_session.add = MagicMock()
+    mock_db_session.commit = MagicMock()
+    
+    # Setup refresh to populate the mock material with required fields
+    def setup_material(material_instance):
+        material_instance.id = uuid4()
+        material_instance.date_added = datetime.now(timezone.utc)
+        material_instance.updated_at = datetime.now(timezone.utc)
+        material_instance.is_deleted = False
+        material_instance.created_by = None
+        material_instance.updated_by = None
+        material_instance.author = None
+        material_instance.material_type = None
+    
+    mock_db_session.refresh.side_effect = setup_material
     
     response = mock_client.post("/materials/", json=material_data)
     
-    # Note: This might fail with 500 if the endpoint code is broken (which we suspect it is)
-    # But this fixes the "FastAPIError: Invalid args for response field" collection error.
-    if response.status_code == 500:
-        # If it fails with 500, we expect it's due to the broken endpoint code
-        # We can assert that for now, or just let it fail to confirm.
-        pass
-    else:
-        assert response.status_code == status.HTTP_201_CREATED
-        data = response.json()
-        assert data["title"] == material_data["title"]
-        assert data["author_id"] == material_data["author_id"]
-        assert data["type_id"] == material_data["type_id"]
+    assert response.status_code == status.HTTP_201_CREATED
+    data = response.json()
+    assert data["title"] == material_data["title"]
+    assert data["author_id"] == material_data["author_id"]
+    assert data["type_id"] == material_data["type_id"]
 
 def test_get_materials_success(mock_client, mock_db_session):
     # Mock database response

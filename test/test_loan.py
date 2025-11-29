@@ -334,12 +334,20 @@ async def test_create_loan_success(
     mock_user = Mock()
     mock_user.id = loan_create_payload.user_id
     
+    # Mock de estado borrowed
+    mock_borrowed_status = Mock()
+    mock_borrowed_status.id = uuid4()
+    mock_borrowed_status.name = "borrowed"
+    
     # Mock de que no hay préstamos activos para el material
-    mock_db_session.execute.return_value.scalar_one_or_none.side_effect = [
-        mock_material,  # Para material
-        mock_user,      # Para usuario  
-        None           # Para préstamo existente
+    mock_execute = Mock()
+    mock_execute.scalar_one_or_none.side_effect = [
+        mock_material,           # Para material
+        mock_user,              # Para usuario  
+        None,                   # Para préstamo existente
+        mock_borrowed_status    # Para estado borrowed
     ]
+    mock_db_session.execute.return_value = mock_execute
     
     mock_loan_instance = Mock()
     mock_loan_instance.id = uuid4()
@@ -458,9 +466,18 @@ async def test_return_loan_success(
     
     mock_loan_db = Mock()
     mock_loan_db.id = loan_id
-    mock_loan_db.is_returned = False  # No devuelto aún
+    mock_loan_db.actual_return_date = None  # No devuelto aún
     
-    mock_db_session.execute.return_value.scalar_one_or_none.return_value = mock_loan_db
+    mock_returned_status = Mock()
+    mock_returned_status.id = uuid4()
+    mock_returned_status.name = "returned"
+    
+    mock_execute = Mock()
+    mock_execute.scalar_one_or_none.side_effect = [
+        mock_loan_db,           # Para obtener el préstamo
+        mock_returned_status    # Para obtener el estado returned
+    ]
+    mock_db_session.execute.return_value = mock_execute
 
     with patch('endpoints.loans.put_loan.LoanResponse') as MockLoanResponse:
         MockLoanResponse.model_validate.return_value = Mock(id=loan_id)
@@ -475,9 +492,8 @@ async def test_return_loan_success(
     mock_db_session.refresh.assert_called_once_with(mock_loan_db)
     
     # Verifica que se actualizaron los campos correctos
-    assert mock_loan_db.is_returned == True
-    assert mock_loan_db.updated_by == str(mock_token_data.id)
     assert mock_loan_db.actual_return_date is not None
+    assert mock_loan_db.updated_by == mock_token_data.id
     assert mock_loan_db.updated_at is not None
     
     assert result is not None
@@ -518,9 +534,11 @@ async def test_return_loan_already_returned(
     
     mock_loan_db = Mock()
     mock_loan_db.id = loan_id
-    mock_loan_db.is_returned = True  # Ya devuelto
+    mock_loan_db.actual_return_date = datetime.now(timezone.utc)  # Ya devuelto
     
-    mock_db_session.execute.return_value.scalar_one_or_none.return_value = mock_loan_db
+    mock_execute = Mock()
+    mock_execute.scalar_one_or_none.return_value = mock_loan_db
+    mock_db_session.execute.return_value = mock_execute
     
     with pytest.raises(HTTPException) as exc_info:
         await return_loan(
