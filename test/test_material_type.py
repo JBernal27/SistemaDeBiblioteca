@@ -4,13 +4,14 @@ from uuid import UUID, uuid4
 from fastapi import status, HTTPException
 from models.schemas import MaterialTypeCreate, MaterialTypeUpdate, MaterialType, TokenData
 from endpoints.material_types.delete_material_type import delete_material_type
-from endpoints.material_types.get_material_type import get_material_types, get_material_type
+from endpoints.material_types.get_material_types import get_material_types, get_material_type
 from endpoints.material_types.post_material_type import create_material_type
 from endpoints.material_types.put_material_type import update_material_type
 
 
-@patch('endpoints.material_types.get_material_type.MaterialType')
-def test_get_material_types_success(
+@pytest.mark.asyncio
+@patch('endpoints.material_types.get_material_types.MaterialType')
+async def test_get_material_types_success(
     MockMaterialType,
     mock_db_session: Mock,
     mock_token_data: TokenData
@@ -30,7 +31,7 @@ def test_get_material_types_success(
     mock_result.scalars.return_value.all.return_value = types_db
     mock_db_session.execute.return_value = mock_result
 
-    result = get_material_types(
+    result = await get_material_types(
         _=mock_token_data,
         skip=0,
         limit=10,
@@ -42,7 +43,8 @@ def test_get_material_types_success(
     assert result == [mock_type_1, mock_type_2]
 
 
-def test_get_material_types_empty(
+@pytest.mark.asyncio
+async def test_get_material_types_empty(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -52,7 +54,7 @@ def test_get_material_types_empty(
     mock_result.scalars.return_value.all.return_value = []
     mock_db_session.execute.return_value = mock_result
 
-    result = get_material_types(
+    result = await get_material_types(
         _=mock_token_data,
         skip=0,
         limit=10,
@@ -62,7 +64,8 @@ def test_get_material_types_empty(
     assert result == []
 
 
-def test_get_material_types_internal_error(
+@pytest.mark.asyncio
+async def test_get_material_types_internal_error(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -71,7 +74,7 @@ def test_get_material_types_internal_error(
     mock_db_session.execute.side_effect = Exception("DB connection failed")
 
     with pytest.raises(HTTPException) as exc_info:
-        get_material_types(
+        await get_material_types(
             _=mock_token_data,
             skip=0,
             limit=10,
@@ -82,8 +85,9 @@ def test_get_material_types_internal_error(
     assert "Error interno del servidor" in exc_info.value.detail
 
 
-@patch('endpoints.material_types.get_material_type.MaterialType')
-def test_get_material_type_success(
+@pytest.mark.asyncio
+@patch('endpoints.material_types.get_material_types.MaterialType')
+async def test_get_material_type_success(
     MockMaterialType,
     mock_db_session: Mock,
     mock_token_data: TokenData
@@ -102,7 +106,7 @@ def test_get_material_type_success(
     mock_result.scalar_one_or_none.return_value = mock_type_db
     mock_db_session.execute.return_value = mock_result
 
-    result = get_material_type(
+    result = await get_material_type(
         material_type_id=str(type_id),
         db=mock_db_session,
         current_user=mock_token_data
@@ -111,7 +115,8 @@ def test_get_material_type_success(
     assert result == mock_type
 
 
-def test_get_material_type_not_found(
+@pytest.mark.asyncio
+async def test_get_material_type_not_found(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -124,7 +129,7 @@ def test_get_material_type_not_found(
     mock_db_session.execute.return_value = mock_result
 
     with pytest.raises(HTTPException) as exc_info:
-        get_material_type(
+        await get_material_type(
             material_type_id=str(type_id),
             db=mock_db_session,
             current_user=mock_token_data
@@ -150,8 +155,9 @@ def material_type_update_payload():
     )
 
 
+@pytest.mark.asyncio
 @patch('endpoints.material_types.post_material_type.uuid4')
-def test_create_material_type_success(
+async def test_create_material_type_success(
     mock_uuid4,
     mock_db_session: Mock,
     mock_token_data: TokenData,
@@ -176,10 +182,10 @@ def test_create_material_type_success(
         with patch('endpoints.material_types.post_material_type.MaterialType') as MockMaterialType:
             MockMaterialType.model_validate.return_value = Mock(id=type_id)
 
-            result = create_material_type(
+            result = await create_material_type(
                 material_type=material_type_create_payload,
                 db=mock_db_session,
-                current_user=mock_token_data
+                current_user=mock_token_data,
             )
         
         mock_db_session.query.assert_called()
@@ -198,7 +204,8 @@ def test_create_material_type_success(
         assert result is not None
 
 
-def test_create_material_type_duplicate_name(
+@pytest.mark.asyncio
+async def test_create_material_type_duplicate_name(
     mock_db_session: Mock,
     mock_token_data: TokenData,
     material_type_create_payload: MaterialTypeCreate
@@ -209,7 +216,7 @@ def test_create_material_type_duplicate_name(
     mock_db_session.query.return_value.filter.return_value.first.return_value = mock_existing_type
     
     with pytest.raises(HTTPException) as exc_info:
-        create_material_type(
+        await create_material_type(
             material_type=material_type_create_payload,
             db=mock_db_session,
             current_user=mock_token_data
@@ -222,8 +229,9 @@ def test_create_material_type_duplicate_name(
     mock_db_session.commit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @patch('endpoints.material_types.put_material_type.MaterialType')
-def test_update_material_type_success(
+async def test_update_material_type_success(
     MockMaterialType,
     mock_db_session: Mock,
     mock_token_data: TokenData,
@@ -251,7 +259,7 @@ def test_update_material_type_success(
 
     MockMaterialType.model_validate.return_value = Mock(id=type_id)
         
-    result = update_material_type(
+    result = await update_material_type(
         material_type_id=type_id,
         material_type_update=material_type_update_payload,
         db=mock_db_session,
@@ -267,7 +275,8 @@ def test_update_material_type_success(
     assert result is not None
 
 
-def test_update_material_type_not_found(
+@pytest.mark.asyncio
+async def test_update_material_type_not_found(
     mock_db_session: Mock,
     mock_token_data: TokenData,
     material_type_update_payload: MaterialTypeUpdate
@@ -279,7 +288,7 @@ def test_update_material_type_not_found(
     mock_db_session.query.return_value.filter.return_value.first.return_value = None
     
     with pytest.raises(HTTPException) as exc_info:
-        update_material_type(
+        await update_material_type(
             material_type_id=type_id,
             material_type_update=material_type_update_payload,
             db=mock_db_session,
@@ -292,7 +301,8 @@ def test_update_material_type_not_found(
     mock_db_session.commit.assert_not_called()
 
 
-def test_update_material_type_duplicate_name(
+@pytest.mark.asyncio
+async def test_update_material_type_duplicate_name(
     mock_db_session: Mock,
     mock_token_data: TokenData,
     material_type_update_payload: MaterialTypeUpdate
@@ -313,7 +323,7 @@ def test_update_material_type_duplicate_name(
     ]
     
     with pytest.raises(HTTPException) as exc_info:
-        update_material_type(
+        await update_material_type(
             material_type_id=type_id,
             material_type_update=material_type_update_payload,
             db=mock_db_session,
@@ -326,7 +336,8 @@ def test_update_material_type_duplicate_name(
     mock_db_session.commit.assert_not_called()
 
 
-def test_delete_material_type_success(
+@pytest.mark.asyncio
+async def test_delete_material_type_success(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -342,7 +353,7 @@ def test_delete_material_type_success(
     # Mock para contar materiales (0 materiales)
     mock_db_session.query.return_value.filter.return_value.count.return_value = 0
     
-    result = delete_material_type(
+    result = await delete_material_type(
         material_type_id=type_id,
         db=mock_db_session,
         current_user=mock_token_data
@@ -354,7 +365,8 @@ def test_delete_material_type_success(
     assert result["message"] == "Tipo de material eliminado correctamente"
 
 
-def test_delete_material_type_not_found(
+@pytest.mark.asyncio
+async def test_delete_material_type_not_found(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -365,7 +377,7 @@ def test_delete_material_type_not_found(
     mock_db_session.query.return_value.filter.return_value.first.return_value = None
     
     with pytest.raises(HTTPException) as exc_info:
-        delete_material_type(
+        await delete_material_type(
             material_type_id=type_id,
             db=mock_db_session,
             current_user=mock_token_data
@@ -377,7 +389,8 @@ def test_delete_material_type_not_found(
     mock_db_session.delete.assert_not_called()
 
 
-def test_delete_material_type_with_materials(
+@pytest.mark.asyncio
+async def test_delete_material_type_with_materials(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -394,7 +407,7 @@ def test_delete_material_type_with_materials(
     mock_db_session.query.return_value.filter.return_value.count.return_value = 3
     
     with pytest.raises(HTTPException) as exc_info:
-        delete_material_type(
+        await delete_material_type(
             material_type_id=type_id,
             db=mock_db_session,
             current_user=mock_token_data

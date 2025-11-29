@@ -4,14 +4,14 @@ from uuid import UUID, uuid4
 from fastapi import status, HTTPException
 from datetime import datetime, timezone
 from models.schemas import LoanCreate, LoanUpdate, LoanResponse, TokenData
-from endpoints.loans.get_loans import get_loans, get_user_loans, get_loan
+from endpoints.loans.get_loan import get_loans, get_user_loans, get_loan
 from endpoints.loans.post_loan import create_loan
 from endpoints.loans.put_loan import return_loan
 
 
 # Tests para funciones SÍNCRONAS (get_loans, get_user_loans, get_loan)
 
-@patch('endpoints.loans.get_loans.LoanResponse')
+@patch('endpoints.loans.get_loan.LoanResponse')
 def test_get_loans_success(
     MockLoanResponse,
     mock_db_session: Mock,
@@ -77,7 +77,7 @@ def test_get_loans_internal_error(
     assert "Error al listar préstamos" in exc_info.value.detail
 
 
-@patch('endpoints.loans.get_loans.LoanResponse')
+@patch('endpoints.loans.get_loan.LoanResponse')
 def test_get_user_loans_success_admin(
     MockLoanResponse,
     mock_db_session: Mock,
@@ -116,7 +116,7 @@ def test_get_user_loans_success_admin(
     assert result == [mock_loan_response_1, mock_loan_response_2]
 
 
-@patch('endpoints.loans.get_loans.LoanResponse')
+@patch('endpoints.loans.get_loan.LoanResponse')
 def test_get_user_loans_success_own_user(
     MockLoanResponse,
     mock_db_session: Mock,
@@ -193,7 +193,7 @@ def test_get_user_loans_not_found(
     assert "No se encontraron préstamos" in exc_info.value.detail
 
 
-@patch('endpoints.loans.get_loans.LoanResponse')
+@patch('endpoints.loans.get_loan.LoanResponse')
 def test_get_loan_success_admin(
     MockLoanResponse,
     mock_db_session: Mock,
@@ -224,7 +224,7 @@ def test_get_loan_success_admin(
     assert result == mock_loan_response
 
 
-@patch('endpoints.loans.get_loans.LoanResponse')
+@patch('endpoints.loans.get_loan.LoanResponse')
 def test_get_loan_success_own_loan(
     MockLoanResponse,
     mock_db_session: Mock,

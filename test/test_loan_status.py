@@ -10,7 +10,8 @@ from endpoints.loan_status.put_loan_status import update_loan_status
 
 
 @patch('endpoints.loan_status.get_loan_status.LoanStatus')
-def test_get_loan_status_success(
+@pytest.mark.asyncio
+async def test_get_loan_status_success(
     MockLoanStatus,
     mock_db_session: Mock,
     mock_token_data: TokenData
@@ -30,7 +31,7 @@ def test_get_loan_status_success(
     mock_result.scalars.return_value.all.return_value = status_db
     mock_db_session.execute.return_value = mock_result
 
-    result = get_loan_status(
+    result = await get_loan_status(
         _=mock_token_data,
         skip=0,
         limit=10,
@@ -42,7 +43,8 @@ def test_get_loan_status_success(
     assert result == [mock_status_1, mock_status_2]
 
 
-def test_get_loan_status_empty(
+@pytest.mark.asyncio
+async def test_get_loan_status_empty(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -52,7 +54,7 @@ def test_get_loan_status_empty(
     mock_result.scalars.return_value.all.return_value = []
     mock_db_session.execute.return_value = mock_result
 
-    result = get_loan_status(
+    result = await get_loan_status(
         _=mock_token_data,
         skip=0,
         limit=10,
@@ -62,7 +64,8 @@ def test_get_loan_status_empty(
     assert result == []
 
 
-def test_get_loan_status_internal_error(
+@pytest.mark.asyncio
+async def test_get_loan_status_internal_error(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -71,7 +74,7 @@ def test_get_loan_status_internal_error(
     mock_db_session.execute.side_effect = Exception("DB connection failed")
 
     with pytest.raises(HTTPException) as exc_info:
-        get_loan_status(
+        await get_loan_status(
             _=mock_token_data,
             skip=0,
             limit=10,
@@ -83,7 +86,8 @@ def test_get_loan_status_internal_error(
 
 
 @patch('endpoints.loan_status.get_loan_status.LoanStatus')
-def test_get_loan_status_by_id_success(
+@pytest.mark.asyncio
+async def test_get_loan_status_by_id_success(
     MockLoanStatus,
     mock_db_session: Mock,
     mock_token_data: TokenData
@@ -102,7 +106,7 @@ def test_get_loan_status_by_id_success(
     mock_result.scalar_one_or_none.return_value = mock_status_db
     mock_db_session.execute.return_value = mock_result
 
-    result = get_loan_status_by_id(
+    result = await get_loan_status_by_id(
         loan_status_id=str(status_id),
         db=mock_db_session,
         current_user=mock_token_data
@@ -111,7 +115,8 @@ def test_get_loan_status_by_id_success(
     assert result == mock_status
 
 
-def test_get_loan_status_by_id_not_found(
+@pytest.mark.asyncio
+async def test_get_loan_status_by_id_not_found(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -124,7 +129,7 @@ def test_get_loan_status_by_id_not_found(
     mock_db_session.execute.return_value = mock_result
 
     with pytest.raises(HTTPException) as exc_info:
-        get_loan_status_by_id(
+        await get_loan_status_by_id(
             loan_status_id=str(status_id),
             db=mock_db_session,
             current_user=mock_token_data
@@ -149,7 +154,8 @@ def loan_status_update_payload():
 
 
 @patch('endpoints.loan_status.post_loan_status.uuid4')
-def test_create_loan_status_success(
+@pytest.mark.asyncio
+async def test_create_loan_status_success(
     mock_uuid4,
     mock_db_session: Mock,
     mock_token_data: TokenData,
@@ -174,7 +180,7 @@ def test_create_loan_status_success(
         with patch('endpoints.loan_status.post_loan_status.LoanStatus') as MockLoanStatus:
             MockLoanStatus.model_validate.return_value = Mock(id=status_id)
 
-            result = create_loan_status(
+            result = await create_loan_status(
                 loan_status=loan_status_create_payload,
                 db=mock_db_session,
                 current_user=mock_token_data
@@ -195,7 +201,8 @@ def test_create_loan_status_success(
         assert result is not None
 
 
-def test_create_loan_status_duplicate_name(
+@pytest.mark.asyncio
+async def test_create_loan_status_duplicate_name(
     mock_db_session: Mock,
     mock_token_data: TokenData,
     loan_status_create_payload: LoanStatusCreate
@@ -206,7 +213,7 @@ def test_create_loan_status_duplicate_name(
     mock_db_session.query.return_value.filter.return_value.first.return_value = mock_existing_status
     
     with pytest.raises(HTTPException) as exc_info:
-        create_loan_status(
+        await create_loan_status(
             loan_status=loan_status_create_payload,
             db=mock_db_session,
             current_user=mock_token_data
@@ -220,7 +227,8 @@ def test_create_loan_status_duplicate_name(
 
 
 @patch('endpoints.loan_status.put_loan_status.LoanStatus')
-def test_update_loan_status_success(
+@pytest.mark.asyncio
+async def test_update_loan_status_success(
     MockLoanStatus,
     mock_db_session: Mock,
     mock_token_data: TokenData,
@@ -247,7 +255,7 @@ def test_update_loan_status_success(
 
     MockLoanStatus.model_validate.return_value = Mock(id=status_id)
         
-    result = update_loan_status(
+    result = await update_loan_status(
         loan_status_id=status_id,
         loan_status_update=loan_status_update_payload,
         db=mock_db_session,
@@ -262,7 +270,8 @@ def test_update_loan_status_success(
     assert result is not None
 
 
-def test_update_loan_status_not_found(
+@pytest.mark.asyncio
+async def test_update_loan_status_not_found(
     mock_db_session: Mock,
     mock_token_data: TokenData,
     loan_status_update_payload: LoanStatusUpdate
@@ -274,7 +283,7 @@ def test_update_loan_status_not_found(
     mock_db_session.query.return_value.filter.return_value.first.return_value = None
     
     with pytest.raises(HTTPException) as exc_info:
-        update_loan_status(
+        await update_loan_status(
             loan_status_id=status_id,
             loan_status_update=loan_status_update_payload,
             db=mock_db_session,
@@ -287,7 +296,8 @@ def test_update_loan_status_not_found(
     mock_db_session.commit.assert_not_called()
 
 
-def test_update_loan_status_duplicate_name(
+@pytest.mark.asyncio
+async def test_update_loan_status_duplicate_name(
     mock_db_session: Mock,
     mock_token_data: TokenData,
     loan_status_update_payload: LoanStatusUpdate
@@ -308,7 +318,7 @@ def test_update_loan_status_duplicate_name(
     ]
     
     with pytest.raises(HTTPException) as exc_info:
-        update_loan_status(
+        await update_loan_status(
             loan_status_id=status_id,
             loan_status_update=loan_status_update_payload,
             db=mock_db_session,
@@ -321,7 +331,8 @@ def test_update_loan_status_duplicate_name(
     mock_db_session.commit.assert_not_called()
 
 
-def test_delete_loan_status_success(
+@pytest.mark.asyncio
+async def test_delete_loan_status_success(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -337,7 +348,7 @@ def test_delete_loan_status_success(
     # Mock para contar préstamos (0 préstamos)
     mock_db_session.query.return_value.filter.return_value.count.return_value = 0
     
-    result = delete_loan_status(
+    result = await delete_loan_status(
         loan_status_id=status_id,
         db=mock_db_session,
         current_user=mock_token_data
@@ -349,7 +360,8 @@ def test_delete_loan_status_success(
     assert result["message"] == "Estado de préstamo eliminado correctamente"
 
 
-def test_delete_loan_status_not_found(
+@pytest.mark.asyncio
+async def test_delete_loan_status_not_found(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -360,7 +372,7 @@ def test_delete_loan_status_not_found(
     mock_db_session.query.return_value.filter.return_value.first.return_value = None
     
     with pytest.raises(HTTPException) as exc_info:
-        delete_loan_status(
+        await delete_loan_status(
             loan_status_id=status_id,
             db=mock_db_session,
             current_user=mock_token_data
@@ -372,7 +384,8 @@ def test_delete_loan_status_not_found(
     mock_db_session.delete.assert_not_called()
 
 
-def test_delete_loan_status_with_loans(
+@pytest.mark.asyncio
+async def test_delete_loan_status_with_loans(
     mock_db_session: Mock,
     mock_token_data: TokenData
 ):
@@ -389,7 +402,7 @@ def test_delete_loan_status_with_loans(
     mock_db_session.query.return_value.filter.return_value.count.return_value = 3
     
     with pytest.raises(HTTPException) as exc_info:
-        delete_loan_status(
+        await delete_loan_status(
             loan_status_id=status_id,
             db=mock_db_session,
             current_user=mock_token_data

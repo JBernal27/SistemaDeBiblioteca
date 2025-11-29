@@ -32,7 +32,7 @@ async def test_get_authors_success(
     ]
     
     mock_result = Mock()
-    mock_result.scalars.return_value.unique.return_value.all.return_value = authors_db
+    mock_result.scalars.return_value.all.return_value = authors_db
     mock_db_session.execute.return_value = mock_result
 
     result = await get_authors(
@@ -54,7 +54,7 @@ async def test_get_authors_empty(
     """Verifica la obtención exitosa de una lista vacía de autores."""
     
     mock_result = Mock()
-    mock_result.scalars.return_value.unique.return_value.all.return_value = []
+    mock_result.scalars.return_value.all.return_value = []
     mock_db_session.execute.return_value = mock_result
 
     result = await get_authors(
@@ -104,7 +104,7 @@ async def test_get_author_success(
     MockAuthorPydantic.model_validate.return_value = mock_author_pydantic
     
     mock_result = Mock()
-    mock_result.scalars.return_value.unique.return_value.one_or_none.return_value = mock_author_db
+    mock_result.scalar_one_or_none.return_value = mock_author_db
     mock_db_session.execute.return_value = mock_result
 
     result = await get_author(
@@ -123,7 +123,7 @@ async def test_get_author_not_found(
     author_id = uuid4()
     
     mock_result = Mock()
-    mock_result.scalars.return_value.unique.return_value.one_or_none.return_value = None
+    mock_result.scalar_one_or_none.return_value = None
     mock_db_session.execute.return_value = mock_result
 
     with pytest.raises(HTTPException) as exc_info:
